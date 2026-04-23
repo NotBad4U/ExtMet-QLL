@@ -252,13 +252,74 @@ Qualitative truth values are valuated in the extended non-negative reals $[0, in
 To represent the two modes of qualitative logic with their different properties, we consider
 the type $"Prop"_plus.o$ of additive where $a = 0$ 'false' and everything else 'true'.
 $
-  "Prop"_plus.o = ([0, infinity], <=, 1, bot, top, or^p, and^p, multimap, times.o.big, attach(times.o.big, tr: *), forall^p, exists^p),
+  "Prop"_(plus.o) = (
+    [-oo, +oo], <=,
+    bot, top
+    0,
+    plus.big, attach(plus.big, tr: *),
+    -(-), 
+    forall,
+    exists
+  )
 $
 
 and the type $"Prop"_times.o$ of multiplicative where we pick $<= 1$ as threshold of truth.
 
 $
-  "Prop"_times.o = ([0, infinity], <=, 1, bot, top, or^p, and^p, multimap, times.o.big, attach(times.o.big, tr: *), forall^p, exists^p),
+  "Prop"_(times.o) = (
+    [0, +oo], <=,
+    bot,
+    top,
+    1,
+    times.o.big, attach(times.o.big, tr: *), multimap, (-)^*,
+    plus.circle^p, plus.circle^(-p),
+    forall^p, exists^p
+  )
 $
+
+At first glance, $"Prop"_plus.o$ does not fit in *ExtMetTop*: its carrier $[-infinity, +infinity]$ admits negative differences, so the candidate distance $|u - v|$ fails the axioms of @def:ext-met.
+This obstruction dissolves once we recognize that $"Prop"_plus.o$ and $"Prop"_times.o$ are two presentations of the same signature, related by the Napier isomorphism.
+We therefore take $"Prop"_times.o$ as the primary internal definition and read $"Prop"_plus.o$ as its Napier-transported image.
+
+#observation([On Lipschitz continuity for Napier isomorphism])[
+  In the Euclidean metric, neither $log$ nor $exp$ is Lipschitz: $log'(x) = 1/x$
+  blows up at $0$, and $exp'(u) = e^u$ blows up at $+oo$. The sensitivity-$1$
+  typing above is sound only because $d_("log")$ on $"Prop"_times.o$ is defined
+  as the pullback of the Euclidean distance along $log$, making both maps
+  isometries by construction.
+] <rem:napier-lipschitz>
+
+
+We introduce two term-level constants witnessing the isomorphism:
+$
+  log : "Prop"_times.o attach(multimap, br:1) "Prop"_plus.o
+  quad quad
+  exp : "Prop"_plus.o attach(multimap, br:1) "Prop"_times.o
+$
+Both carry sensitivity $1$ because, under $d_("log")$ on $"Prop"_times.o$, they
+are isometries. The following judgmental equalities axiomatize the isomorphism:
+
+#figure(
+  caption: [Napier isomorphism axioms.],
+  table(
+    columns: (1fr, 1fr),
+    align: (left, left),
+    stroke: none,
+    table.header(
+      [$"Prop"_times.o arrow "Prop"_plus.o$],
+      [$"Prop"_plus.o arrow "Prop"_times.o$],
+    ),
+    $log(exp u) equiv u$,                                           $exp(log a) equiv a$,
+    $log(a times.o.big b) equiv log a + log b$,                      $exp(u + v) equiv exp u times.o.big exp v$,
+    $log(a attach(times.o.big, tr: *) b) equiv log a attach(+, tr: *) log b$, $exp(u attach(+, tr: *) v) equiv exp u attach(times.o.big, tr: *) exp v$,
+    $log 1 equiv 0$,                                                 $exp 0 equiv 1$,
+    $log bot_times.o equiv bot_plus.o$,                              $exp bot_plus.o equiv bot_times.o$,
+    $log top_times.o equiv top_plus.o$,                              $exp top_plus.o equiv top_times.o$,
+    $log(a^*) equiv -(log a)$,                                       $exp(-u) equiv (exp u)^*$,
+    $log(a multimap b) equiv log b - log a$,                         $exp(v - u) equiv exp u multimap exp v$,
+  ),
+) <fig:napier-axioms>
+
+== semantics
 
 #bibliography("refs.bib")

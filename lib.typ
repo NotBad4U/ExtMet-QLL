@@ -1,6 +1,8 @@
 #import "@preview/ctheorems:1.1.3": *
 
 #let colors = (
+  emerald: rgb("#00A99D"), 
+  royalblue: cmyk(100%, 50%, 0%, 0%),
   yellow: rgb(99%, 78%, 7%),
   gray: rgb(31%, 31%, 33%),
   bulletgray: rgb(60%, 60%, 61%),
@@ -168,7 +170,7 @@
           inset: 2mm,
           width: 4cm,
           height: 7mm,
-          fill: colors.yellow,
+          fill: colors.emerald,
           text(tracking: 1.5pt, spacing: 1pt, colors.gray, font: fonts.sans, footer-box-text),
         ))))
       }
@@ -314,7 +316,7 @@
   set heading(numbering: "1.1")
   show heading.where(level: 1): it => {
     let nb-block = if it.numbering == none { none } else {
-      block(fill: colors.yellow, outset: (top: 0.7mm, bottom: -0.7mm),
+      block(fill: colors.emerald, outset: (top: 0.7mm, bottom: -0.7mm),
         height: 5mm, width: 5.9mm,
         align(center, text(font: fonts.sans, size: 12pt,
           numbering(it.numbering, ..counter(heading).at(it.location()))
@@ -404,7 +406,7 @@
     set align(left)
     set text(size: .92em)
     align(horizon, {})
-    box(fill: color.yellow, inset: 1.4mm)
+    box(fill: colors.emerald, inset: 1.4mm)
     let n = numbering(it.numbering, ..counter(figure.where(kind: it.kind)).get())
     h(3mm)
     text(font: fonts.sans, weight: "bold")[#it.supplement #n]
