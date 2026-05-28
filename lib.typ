@@ -37,6 +37,7 @@
 #let theorem = thm-base("Theorem")
 #let definition = thm-base("Definition")
 #let lemma = thm-base("Lemma")
+#let remark = thm-base("Remark")
 #let observation = thm-base("Observation")
 #let corollary = thm-base("Corollary")
 #let example = thm-base("Example")

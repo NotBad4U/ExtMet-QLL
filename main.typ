@@ -18,6 +18,8 @@
   keywords: [Dummy keyword],
 )
 
+= Preliminaries on extended Reals numbers
+
 = Preliminaries on extended metric spaces
 
 // A function  $f: X -> Y$ between metric spaces is $r$-Lipschitz continuous , for $r >= 0$, if $r dot d_X (x_1, x_2) >= d_Y (f(x_1), f(x_2))$ for $x_1, x_2 in X$. A function is called  _non-expansive_ when $r = 1$ and a contraction
@@ -25,11 +27,41 @@
 
 
 #definition([Extended metric space])[
-  Extended metric structures, where extended metric spaces are sets $X$ endowed with a symmetric and triangular $d_X: X × X → [0,∞]$, with $d(x, y) = 0$ iff $x = y$.
-  Extended distances arise in a natural way either by taking the supremum $sup |f(x)−f(y)|$ along
-  a set $F$ of functions which separate the points of $X$, by construction of length distances and more generally by action minimization
+  Extended metric spaces are sets $X$ endowed with the distance function $d_infinity: X × X → [0,∞]$ as to allow the distance function d to attain the value ∞, i.e. distances are non-negative numbers on the extended real line $overline(RR)$.
+
 ] <def:ext-met>
 
+#definition([Bounded extended metric])[
+  Every extended metric can be replaced by a topologically equivalent real-valued metric i.e $d in RR^2 -> [0, infinity)$. It suffices to post-compose $d_infinity$ with a subadditive, monotonically increasing, bounded function vanishing at zero, e.g.
+
+  - $d' (x, y) = frac(d_infinity (x, y), (1 + d_infinity (x, y))) quad "with" infinity / infinity = 1$
+  - or  $d'' (x, y) = min(1, d_infinity (x, y))$,
+
+  both of which take values in $[0, 1]$ and induce the same topology as $d_infinity$.
+]<def:bounded-ext-met>
+
+We will write $d_X$ instead of $d_infinity^X$ when it is clear from the context that we are talking about the extended metric on $X$.
+
+
+#definition([r-Lipschitz continuity])[
+  A function $f: X → Y$ between metric spaces is $r$-Lipschitz continuous, for $r ≥ 0$, if $r dot d_X (x, y) ≥ d_Y (f(x), f(y))$ for all $x, y ∈ X$. A function is called _non-expansive_ when $r = 1$ and a _contraction_ when $r < 1$ and $X = Y$.
+]<def:lip-cont>
+
+#proposition([cases of r-Lipschitz p-mean])[
+  The $p$-mean function:
+  $
+    M_p(x_1, dots, x_n) := (frac(1, n) sum_(i=1)^n x_i^p)^(1/p)
+  $
+  on $[0, +oo)^n$ is non-expansive ($r = 1$) in the three closed-form cases $p = +oo$, $p = -oo$ and $p = 1$, where it degenerates to a lattice or affine operation:
+  $
+    M_(+oo)(x) = max x_i, quad M_(-oo)(x) = min x_i, quad M_1(x) = 1 / n sum_(i = 1)^n x_i.
+  $
+  The two extremal means are non-expansive because the lattice operations contract differences pointwise:
+  $ |max x_i - max y_i| <= max |x_i - y_i| quad "and" quad |min x_i - min y_i| <= max |x_i - y_i|, $
+  whereas for the arithmetic mean the triangle inequality gives
+  $ |M_1(x) - M_1(y)| = |1 / n sum_(i = 1)^n (x_i - y_i)| <= 1 / n sum_(i = 1)^n |x_i - y_i| <= max |x_i - y_i|. $
+  In each case the bounding quantity $max |x_i - y_i|$ is exactly the sup (Chebyshev) distance $d_oo (x, y)$, so $|M_p (x) - M_p (y)| <= d_oo (x, y)$. Hence for $p in {1, +oo, -oo}$ the $p$-mean is $1$-Lipschitz, i.e. non-expansive ($r = 1$) for $d_oo$, which establishes the claim.
+]<def:lip-p-mean>
 
 #definition([The category of $bold("CExtMet")$])[
   The category $bold("CExtMet")$ of complete extended metric spaces is defined by the following data:
@@ -104,11 +136,23 @@ This monad has an algebraic presentation as the free  complete interpolative bar
   satisfying the equations
   - *(idempotence)* $x plus.o_p x = x$;
   - *(commutativity)* $x plus.o_p y = y plus.o_(1 - p) x$;
-  - *(associativity)* $(x plus.o_p y) plus.o_q z = x plus.o_(p q) (y plus.o_((q - p q) / (1 - p q)) z)$.
-  A _homomorphism_ $f : X -> Y$ of IB algebras is a continuous-short map such that $f(x plus.o_p y) = f(x) plus.o_p f(y)$ for all $x, y in X$ and $p in (0, 1)$.
+  - *(associativity)* $(x plus.o_p y) plus.o_q z = x plus.o_(p q) (y plus.o_((q - p q) / (1 - p q)) z) quad$ provided $p < 1, q < 1$;
 ] <def:ib-algebra>
 
+A homomorphism $f : X -> Y$ of IB algebras is a continuous-short map such that $f(x plus.o_p y) = f(x) plus.o_p f(y)$ for all $x, y in X$ and $p in (0, 1)$.
+
 For every $X in bold("CExtMet")$, the space $cal(P)_p X$ is an interpolative barycentric algebra under the pointwise convex combination $mu plus.o_p nu = p mu + (1 - p) nu$. It axiomatizing probabilistic choice by means of this binary convex combination operations ($plus.o_p$).
+
+
+= Hölder's inequality
+
+Hölder's inequality is the analytic backbone of the duality between the $p$-sum and its harmonic dual, and it is what ultimately makes the $p$-Wasserstein distance of @def:wasserstein-monad a genuine extended metric. Fix two _conjugate exponents_ $p, q in [1, +oo]$, that is, exponents related by $1 / p + 1 / q = 1$, equivalently $p^* + q^* = 1$ in terms of the inversion $(-)^*$. Then for any two families $(a_i)_(i in I)$ and $(b_i)_(i in I)$ of extended non-negative reals,
+$ sum_(i in I) a_i dot b_i <= (sum_(i in I) a_i^p)^(1 / p) dot (sum_(i in I) b_i^q)^(1 / q), $
+where the boundary cases $p = 1$, $q = +oo$ (and symmetrically) are evaluated with the conventions $a times.o.big oo = oo$ for $a > 0$ and $0 times.o.big oo = 0$ fixed for the semiring $([0, +oo], plus.o.big, times.o.big)$. Geometrically, the inequality says that pairing a vector against another is bounded by the product of their $p$- and $q$-norms; the special case $p = q = 2$ is the Cauchy–Schwarz inequality. In the $p$-sum notation $plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1 / p)$ introduced below, it states that the bilinear pairing is jointly bounded by the conjugate $p$- and $q$-sums,
+$ plus.o.big_(i in I) (a_i times.o.big b_i) <= (plus.o.big_(i in I)^p a_i) times.o.big (plus.o.big_(i in I)^q b_i). $
+From it one derives Minkowski's inequality, i.e. the triangle inequality for the $p$-sum, which in turn is exactly what is needed for the $p$-Wasserstein distance carried by the monad $cal(P)_p$ to satisfy the triangular axiom of @def:ext-met.
+
+This is also what will let us encode the quantitative quantifiers: the $p$-indexed $forall^p$ and $exists^p$ are infinitary $p$-sums (respectively, harmonic $p$-sums) over the domain of quantification, and the non-expansiveness of the $p$-mean established in @def:lip-p-mean — extended from finite tuples to arbitrary index sets by Minkowski's inequality — guarantees that these quantifiers are themselves short maps, hence legitimate *CExtMet* morphisms.
 
 = A calculus for CExtMet
 
@@ -121,7 +165,7 @@ The syntax is based on a simply-typed $lambda$-calculus with products and sums, 
 $
   M, N ::= & x | () | lambda x. M | M #h(0.3em) N | chevron.l M, N chevron.r | pi_1 M | pi_2 M | "let" x = M "in" N \
          | & #h(0.5em) "inl" M | "inr" M | "case" M "of" "inl" x => N | "inr" y => N \
-         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M plus.o_p N | 0 | "succ"(M)
+         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M plus.o_p N | 0 | "succ"(M) | "rec"(u, (x,t).t, v)
 $
 
 There are two pairs constructors, $chevron.l M, N chevron.r$ and $(M, N)$, corresponding to the Cartesian and monoidal  products, respectively. The first one is eliminated using the projections $pi_i M$, whereas the second one is eliminated using $( "let" x = M "in" N)$. The term "()" is unit value. The injections "inl" and "inr" form expressions of sum type, which are eliminated by case analysis  $"case" M "of" "inl" x => N | "inr" y => N$.
