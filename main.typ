@@ -1,5 +1,6 @@
 #import "lib.typ": *
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
+#import "@preview/curryst:0.6.0": prooftree, rule, rule-set
 
 #show: para-lipics.with(
   title: [Internal QLL in CExtMet],
@@ -18,7 +19,31 @@
   keywords: [Dummy keyword],
 )
 
+#let rule-set(column-gutter: 3em, row-gutter: 2em, ..rules) = {
+  set par(leading: row-gutter)
+  block(rules.pos().map(box).join(h(column-gutter, weak: true)))
+}
+
+#let emptyctx = $chevron.l chevron.r$;
+
+// graded typing colon:  tcol(r, p) renders ":" with r on top (sensitivity) and p below (softness)
+#let tcol(r, p) = $attach(:, tr: #r, br: #p)$
+
 = Preliminaries on extended Reals numbers
+
+Many QLs are based on intervals of real numbers such as [0,∞], used in QLL.
+Besides standard operations such as multiplication ⊗, we require the notion of comultiplication $times^*$ and p-sums $plus.o^p$, where $p eq.not 0$.
+Comultiplication $a times.o^* b := (a^(−1) times.o b^(−1))^(−1)$ only differs from multiplication for $a= 0$ and $b= infinity$.
+
+For ML applications, it is desirable to have operations that are differentiable and componentwise strictly increasing.
+These are also referred to as _soft_ operations, in contrast to $max$ and $min$, which are referred to as _hard_ operations.
+Due to being soft, p-sums $a plus.o^p b:= (a^p + b^p)^(1/p)$, originally applied to QLs in Yager logic, have recently gained importance and are used in QLL, for instance.
+A key relation we are currently mechanising is that $plus.o^p$ converges to the binary maximum function as $p -> infinity$.
+
+#notations[p-mean large operator][
+  On the left we have the $p$-sum, and on the right its harmonic dual:
+  $ plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1/p) quad quad "and" quad quad plus.o.big_(i in I)^(p,*) a_i = (plus.o.big_(i in I) a_i^*)^(1/p)^* $.
+]
 
 = Preliminaries on extended metric spaces
 
@@ -32,7 +57,7 @@
 ] <def:ext-met>
 
 #definition([Bounded extended metric])[
-  Every extended metric can be replaced by a topologically equivalent real-valued metric i.e $d in RR^2 -> [0, infinity)$. It suffices to post-compose $d_infinity$ with a subadditive, monotonically increasing, bounded function vanishing at zero, e.g.
+  Every extended metric can be replaced by a topologically equivalent real-valued metric i.e $d in RR^2 -> [0, infinity)$. It suffices to post-compose $d_infinity$ with a subadditive, monotonifcally increasing, bounded function vanishing at zero, e.g.
 
   - $d' (x, y) = frac(d_infinity (x, y), (1 + d_infinity (x, y))) quad "with" infinity / infinity = 1$
   - or  $d'' (x, y) = min(1, d_infinity (x, y))$,
@@ -132,27 +157,19 @@ This monad has an algebraic presentation as the free  complete interpolative bar
 
 #definition([Interpolative barycentric algebra])[
   A _(complete) interpolative barycentric algebra_ in *CExtMet* is a metrically-complete object $X$ equipped with a family of non-expansive _convex combinations_
-  $ plus.o_p : p X attach(times.o, bl: 1, br: 1) (1 - p) X -> X, quad p in (0, 1), $
+  $ amp.inv_p : p X times.o (1 - p) X -> X, quad p in (0, 1), $
   satisfying the equations
-  - *(idempotence)* $x plus.o_p x = x$;
-  - *(commutativity)* $x plus.o_p y = y plus.o_(1 - p) x$;
-  - *(associativity)* $(x plus.o_p y) plus.o_q z = x plus.o_(p q) (y plus.o_((q - p q) / (1 - p q)) z) quad$ provided $p < 1, q < 1$;
+  - *(idempotence)* $x amp.inv_p x = x$;
+  - *(commutativity)* $x amp.inv_p y = y amp.inv_(1 - p) x$;
+  - *(associativity)* $(x amp.inv_p y) amp.inv_q z = x amp.inv_(p q) (y amp.inv_((q - p q) / (1 - p q)) z) quad$ provided $p < 1, q < 1$;
 ] <def:ib-algebra>
 
-A homomorphism $f : X -> Y$ of IB algebras is a continuous-short map such that $f(x plus.o_p y) = f(x) plus.o_p f(y)$ for all $x, y in X$ and $p in (0, 1)$.
+A homomorphism $f : X -> Y$ of IB algebras is a continuous-short map such that $f(x amp.inv_p y) = f(x) amp.inv_p f(y)$ for all $x, y in X$ and $p in (0, 1)$.
 
-For every $X in bold("CExtMet")$, the space $cal(P)_p X$ is an interpolative barycentric algebra under the pointwise convex combination $mu plus.o_p nu = p mu + (1 - p) nu$. It axiomatizing probabilistic choice by means of this binary convex combination operations ($plus.o_p$).
+For every $X in bold("CExtMet")$, the space $cal(P)_p X$ is an interpolative barycentric algebra under the pointwise convex combination $mu amp.inv_p nu = p mu + (1 - p) nu$. It axiomatizing probabilistic choice by means of this binary convex combination operations ($plus.o_p$).
 
 
-= Hölder's inequality
 
-Hölder's inequality is the analytic backbone of the duality between the $p$-sum and its harmonic dual, and it is what ultimately makes the $p$-Wasserstein distance of @def:wasserstein-monad a genuine extended metric. Fix two _conjugate exponents_ $p, q in [1, +oo]$, that is, exponents related by $1 / p + 1 / q = 1$, equivalently $p^* + q^* = 1$ in terms of the inversion $(-)^*$. Then for any two families $(a_i)_(i in I)$ and $(b_i)_(i in I)$ of extended non-negative reals,
-$ sum_(i in I) a_i dot b_i <= (sum_(i in I) a_i^p)^(1 / p) dot (sum_(i in I) b_i^q)^(1 / q), $
-where the boundary cases $p = 1$, $q = +oo$ (and symmetrically) are evaluated with the conventions $a times.o.big oo = oo$ for $a > 0$ and $0 times.o.big oo = 0$ fixed for the semiring $([0, +oo], plus.o.big, times.o.big)$. Geometrically, the inequality says that pairing a vector against another is bounded by the product of their $p$- and $q$-norms; the special case $p = q = 2$ is the Cauchy–Schwarz inequality. In the $p$-sum notation $plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1 / p)$ introduced below, it states that the bilinear pairing is jointly bounded by the conjugate $p$- and $q$-sums,
-$ plus.o.big_(i in I) (a_i times.o.big b_i) <= (plus.o.big_(i in I)^p a_i) times.o.big (plus.o.big_(i in I)^q b_i). $
-From it one derives Minkowski's inequality, i.e. the triangle inequality for the $p$-sum, which in turn is exactly what is needed for the $p$-Wasserstein distance carried by the monad $cal(P)_p$ to satisfy the triangular axiom of @def:ext-met.
-
-This is also what will let us encode the quantitative quantifiers: the $p$-indexed $forall^p$ and $exists^p$ are infinitary $p$-sums (respectively, harmonic $p$-sums) over the domain of quantification, and the non-expansiveness of the $p$-mean established in @def:lip-p-mean — extended from finite tuples to arbitrary index sets by Minkowski's inequality — guarantees that these quantifiers are themselves short maps, hence legitimate *CExtMet* morphisms.
 
 = A calculus for CExtMet
 
@@ -165,25 +182,110 @@ The syntax is based on a simply-typed $lambda$-calculus with products and sums, 
 $
   M, N ::= & x | () | lambda x. M | M #h(0.3em) N | chevron.l M, N chevron.r | pi_1 M | pi_2 M | "let" x = M "in" N \
          | & #h(0.5em) "inl" M | "inr" M | "case" M "of" "inl" x => N | "inr" y => N \
-         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M plus.o_p N | 0 | "succ"(M) | "rec"(u, (x,t).t, v)
+         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M amp.inv_p N | 0 | "succ"(M) | "rec"(u, (x,t).t, v)
 $
 
 There are two pairs constructors, $chevron.l M, N chevron.r$ and $(M, N)$, corresponding to the Cartesian and monoidal  products, respectively. The first one is eliminated using the projections $pi_i M$, whereas the second one is eliminated using $( "let" x = M "in" N)$. The term "()" is unit value. The injections "inl" and "inr" form expressions of sum type, which are eliminated by case analysis  $"case" M "of" "inl" x => N | "inr" y => N$.
-The term $delta M$ denotes a distribution, and $M plus.o_p N$ the convex sumof $M$ and $N$. For convenience, we also include the natural numbers with constructors $0$ and $"succ"(M)$. Finally, $"fix" x. M$ is the “Banach” fixed point combinator.
+The term $delta M$ denotes a distribution, and $M amp.inv_p N$ the convex sumof $M$ and $N$. For convenience, we also include the natural numbers with constructors $0$ and $"succ"(M)$. Finally, $"fix" x. M$ is the “Banach” fixed point combinator.
 
 The types of the calculus are defined by the grammar:
 $
-  A, B ::= & NN | 1 | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | 𝔇_∞ A
+  A, B ::= & NN | 1 | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(P) A
 $
 
 essentially corresponding to the constructions of the previous section. Although rescaling of metric  spaces played a central role in the previous section, it is not a primitive type former in the calculus.
-Instead, it is part of the tensor type $A attach(times.o, bl: r, br: s) B$ and function type $A multimap_r B$ constructors. This choice  was made to minimize the book keeping necessary for scalars in terms. Finally, $𝔇_∞ A$ is the Kantorovich type of Radon probability measures on $A$.
+Instead, it is part of the tensor type $A attach(times.o, bl: r, br: s) B$ and function type $A multimap_r B$ constructors. This choice  was made to minimize the book keeping necessary for scalars in terms. Finally, $cal(W) A$ is the Wasserstein type of probability measures on $A$.
 
 == Typing rules and properties
 
-#figure(
-  caption: [Typing rules.],
-  [TODO],
+#definition([Hölder conjugate exponents])[
+  Two exponents $p, q in [1, +oo]$ are _Hölder conjugates_ when
+  $ 1 / p + 1 / q = 1, $
+  with the convention $1 / oo = 0$, so that $p = 1$ pairs with $q = oo$ and $p = q = 2$ is self-conjugate. Hölder's inequality @holder-inequality then bounds the $plus.o.big$-pairing of two families by the product of their $p$- and $q$-sums:
+  $ plus.o.big_(i in I) (a_i times.o b_i) <= (plus.o.big_(i in I)^p a_i) times.o (plus.o.big_(i in I)^q b_i). $
+] <def:holder>
+
+#remark([Tracking $p$ and $q$ in the typing judgement])[
+  @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a resource aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$.
+]
+
+Terms are typed with the judgement:
+
+#align(center, box(
+  stroke: .5pt,
+  inset: 5pt,
+)[
+  $
+    Γ ⊢ t tcol(r, p) A
+  $
+])
+
+where $Γ$ is a context of variable bindings, $t$ is a term of type $A$ graded by $r$ the sensitivity annotations for probabilistic choice described in @def:ib-algebra and @def:guarded-fix, and $p$ is the degree of softness for tracking @def:holder.
+
+
+=== Structural rules
+
+The notation $Γ,Γ'$ denotes the concatenation of contexts with disjoint variable bindings.
+The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are defined to keep track of the _sensitivities_ and _softness_ of the resources in the context.
+
+#let ctx = prooftree(rule(
+  name: [],
+  $emptyctx :: "ctx"$,
+))
+
+#let abstraction = prooftree(rule(
+  name: [],
+  $Γ :: "ctx"$,
+  $x in.not Γ$,
+  $r in [0, oo]$,
+  $p in [0, oo]_(times.o^*)$,
+  // ---------------------------------------
+  $Γ, x tcol(r, p) A :: "ctx"$,
+))
+
+#let relax = prooftree(rule(
+  name: [],
+  $Γ, x tcol(r, q) A ⊢ t : B$,
+  $p <= q$,
+  // ---------------------------------------
+  $Γ, x tcol(r, p) A ⊢ t : B$,
+))
+
+#align(center, rule-set(
+  ctx,
+  abstraction,
+  relax,
+))
+
+#definition[context scaling operations][
+  - $emptyctx plus.double emptyctx equiv emptyctx$
+  - $r emptyctx equiv emptyctx$
+  - $(Γ, x tcol(r, p) A) plus.double (Γ', x tcol(s, q) A) equiv Γ plus.double Γ', x tcol(r + s, p + q) A)$
+  - $r(Γ, x tcol(s, p) A) equiv r(Γ), x tcol(r dot s, p) A$
+]
+
+=== Rules for ordinary terms
+
+#let var = prooftree(rule(
+  name: [(VAR)],
+  $r >= 1$,
+  // ------------------------------------------------
+  $Γ, x tcol(r, p) A, Γ' ⊢ x : A$,
+))
+
+#let abs = prooftree(rule(
+  name: [(ABS)],
+  $Γ, x tcol(r, p) A ⊢ t : B$,
+  // --------------------------
+  $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
+))
+
+#align(
+  center,
+  rule-set(
+    var,
+    abs,
+  ),
 )
 
 == Semantics
@@ -194,9 +296,8 @@ Consider the extended positive reals $[0, infinity]$ with their usual order $<=$
 $forall a in (0, infinity], a times.o.big infinity = infinity$ and $0 times.o.big infinity = 0$. The inversion $(-)^*: [0, +oo]^(op) -> [0, infinity]$ yields a duality and defined as $forall a in (0, infinity), a^* = 1 / a$ extended with the rules $1/0 = infinity$ and $1/infinity=0$.
 
 Now on the same poset $[0, infinity]$ consider the sum $plus.o.big$ trivially defined by $a plus.o.big b = a + b$ extended with the rules $a plus.o.big infinity = infinity$ for every $a in [0, infinity]$. The resulting structure is a commutative semiring, and the multiplication $times.o.big$ distributes over the sum $plus.o.big$.
-The harmonic sum is defined as $a plus.o.big^* b := (a^* plus.o.big b^*)^*$. Choosing $0 < p < infinity$, we can conjugatet these operationsby exponentiation to obtain p-sum and harmonic p-sum:
+// The harmonic sum is defined as $a plus.o.big^* b := (a^* plus.o.big b^*)^*$. Choosing $0 < p < infinity$, we can conjugatet these operationsby exponentiation to obtain p-sum and harmonic p-sum:
 
-$ plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1/p) $ and $ plus.o.big_(i in I)^(p,*) a_i = (plus.o.big_(i in I) a_i^*)^(1/p)^* $.
 
 We introduce a first order quantitative logic to reason about the terms of the calculus.
 Qualitative truth values are valuated in the extended non-negative reals $[0, infinity]$.
@@ -205,9 +306,8 @@ the type $"Prop"_plus.o$ of additive where $a = 0$ 'false' and everything else '
 $
   "Prop"_(plus.o) = (
     [-oo, +oo], <=,
-    bot, top
+    bot, top,
     0,
-    plus.big, attach(plus.big, tr: *),
     -(-),
     forall,
     exists
@@ -222,9 +322,9 @@ $
     bot,
     top,
     1,
-    times.o.big, attach(times.o.big, tr: *), multimap, (-)^*,
-    plus.circle^p, plus.circle^(-p),
-    forall^p, exists^p
+    −•, (-)^*,
+    and, or,
+    forall, exists
   )
 $
 

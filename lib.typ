@@ -25,7 +25,6 @@
 #let thmtriL = text(sym.triangle.filled.l, font: "DejaVu Sans Mono", size: thm-tri-size, colors.gray)
 
 #let thm-base = thmbox.with(
-  "thm-like",
   base: none,
   titlefmt: it => text(font: fonts.sans)[#thmtriR *#it*],
   namefmt: it => text(font: fonts.sans)[(#it)],
@@ -34,14 +33,15 @@
   inset: 0em,
 )
 
-#let theorem = thm-base("Theorem")
-#let definition = thm-base("Definition")
-#let lemma = thm-base("Lemma")
-#let remark = thm-base("Remark")
-#let observation = thm-base("Observation")
-#let corollary = thm-base("Corollary")
-#let example = thm-base("Example")
-#let proposition = thm-base("Proposition")
+#let theorem = thm-base("theorem", "Theorem")
+#let definition = thm-base("definition", "Definition")
+#let lemma = thm-base("lemma", "Lemma")
+#let notations = thm-base("notations", "Notations")
+#let remark = thm-base("remark", "Remark")
+#let observation = thm-base("observation", "Observation")
+#let corollary = thm-base("corollary", "Corollary")
+#let example = thm-base("example", "Example")
+#let proposition = thm-base("proposition", "Proposition")
 
 #let prf-base = thmproof.with(
   "proof",
