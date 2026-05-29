@@ -44,6 +44,12 @@ A key relation we are currently mechanising is that $plus.o^p$ converges to the 
   On the left we have the $p$-sum, and on the right its harmonic dual:
   $ plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1/p) quad quad "and" quad quad plus.o.big_(i in I)^(p,*) a_i = (plus.o.big_(i in I) a_i^*)^(1/p)^* $.
 ]
+#definition([Hölder conjugate exponents])[
+  Two exponents $p, q in [1, +oo]$ are _Hölder conjugates_ when
+  $ 1 / p + 1 / q = 1, $
+  with the convention $1 / oo = 0$, so that $p = 1$ pairs with $q = oo$ and $p = q = 2$ is self-conjugate. Hölder's inequality @holder-inequality then bounds the $plus.o.big$-pairing of two families by the product of their $p$- and $q$-sums:
+  $ plus.o.big_(i in I) (a_i times.o b_i) <= (plus.o.big_(i in I)^p a_i) times.o (plus.o.big_(i in I)^q b_i). $
+] <def:holder>
 
 = Preliminaries on extended metric spaces
 
@@ -198,12 +204,7 @@ Instead, it is part of the tensor type $A attach(times.o, bl: r, br: s) B$ and f
 
 == Typing rules and properties
 
-#definition([Hölder conjugate exponents])[
-  Two exponents $p, q in [1, +oo]$ are _Hölder conjugates_ when
-  $ 1 / p + 1 / q = 1, $
-  with the convention $1 / oo = 0$, so that $p = 1$ pairs with $q = oo$ and $p = q = 2$ is self-conjugate. Hölder's inequality @holder-inequality then bounds the $plus.o.big$-pairing of two families by the product of their $p$- and $q$-sums:
-  $ plus.o.big_(i in I) (a_i times.o b_i) <= (plus.o.big_(i in I)^p a_i) times.o (plus.o.big_(i in I)^q b_i). $
-] <def:holder>
+
 
 #remark([Tracking $p$ and $q$ in the typing judgement])[
   @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a resource aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$.
@@ -276,8 +277,38 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 #let abs = prooftree(rule(
   name: [(ABS)],
   $Γ, x tcol(r, p) A ⊢ t : B$,
+  $p in [0, oo]_(times.o^*)$,
   // --------------------------
   $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
+))
+
+#let app = prooftree(rule(
+  name: [(APP)],
+  $Γ ⊢ t : A attach(⊸, br: r) B$,
+  $Γ' ⊢ u : A$,
+  // --------------------------
+  $Γ plus.double r Γ' ⊢ t space u : B$,
+))
+
+#let unit = prooftree(rule(
+  name: [(UNIT)],
+  // --------------------------
+  $Γ ⊢ () : 1$,
+))
+
+#let pair = prooftree(rule(
+  name: [(PAIR)],
+  $Γ ⊢ t : A$,
+  $Γ ⊢ u : B$,
+  // --------------------------
+  $Γ ⊢ chevron.l t, u chevron.r : A times B$,
+))
+
+#let proj = prooftree(rule(
+  name: [($π_i$)],
+  $Γ ⊢ t : A_1 times A_2$,
+  // --------------------------
+  $Γ ⊢ pi_i space t : A_i$,
 ))
 
 #align(
@@ -285,6 +316,10 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   rule-set(
     var,
     abs,
+    app,
+    unit,
+    pair,
+    proj,
   ),
 )
 
