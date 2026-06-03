@@ -28,6 +28,7 @@
 
 // graded typing colon:  tcol(r, p) renders ":" with r on top (sensitivity) and p below (softness)
 #let tcol(r, p) = $attach(:, tr: #r, br: #p)$
+#let infp = $[0, oo]_(times.o^*)$
 
 = Preliminaries on extended Reals numbers
 
@@ -239,7 +240,7 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   $Γ :: "ctx"$,
   $x in.not Γ$,
   $r in [0, oo]$,
-  $p in [0, oo]_(times.o^*)$,
+  $p in infp$,
   // ---------------------------------------
   $Γ, x tcol(r, p) A :: "ctx"$,
 ))
@@ -270,6 +271,7 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 #let var = prooftree(rule(
   name: [(VAR)],
   $r >= 1$,
+  $p in infp$,
   // ------------------------------------------------
   $Γ, x tcol(r, p) A, Γ' ⊢ x : A$,
 ))
@@ -277,7 +279,7 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 #let abs = prooftree(rule(
   name: [(ABS)],
   $Γ, x tcol(r, p) A ⊢ t : B$,
-  $p in [0, oo]_(times.o^*)$,
+  $p in infp$,
   // --------------------------
   $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
 ))
@@ -311,6 +313,33 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   $Γ ⊢ pi_i space t : A_i$,
 ))
 
+
+#let inj = prooftree(rule(
+  name: [($"inj"_i$)],
+  $Γ ⊢ t : A_i$,
+  // --------------------------
+  $Γ ⊢ "inj"_i space t : A_1 + A_2$,
+))
+
+#let case = prooftree(rule(
+  name: [(CASE)],
+  $Γ' ⊢ t : A + B$,
+  $Γ, x tcol(r, p) A ⊢ u : C$,
+  $Γ, y tcol(r, p) B ⊢ v : C$,
+  $p in infp$,
+  $r >= 1$,
+  // --------------------------
+  $Γ ⧺ r Γ' ⊢ "case" t "of" ["inj"_1 x => u | "inj"_2 y] tcol("", p) C$,
+))
+
+#let tensor = prooftree(rule(
+  name: [($times.o$)],
+  $Γ ⊢ t : A$,
+  $Γ' ⊢ u : B$,
+  // --------------------------
+  $r Γ ⧺ s Γ' ⧺ Γ'' ⊢ (t, u) tcol("", p) A attach(⊗, br: s, bl: r) B$,
+))
+
 #align(
   center,
   rule-set(
@@ -320,6 +349,9 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
     unit,
     pair,
     proj,
+    inj,
+    case,
+    tensor,
   ),
 )
 
