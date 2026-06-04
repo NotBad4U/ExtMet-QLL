@@ -26,9 +26,10 @@
 
 #let emptyctx = $chevron.l chevron.r$;
 
-// graded typing colon:  tcol(r, p) renders ":" with r on top (sensitivity) and p below (softness)
-#let tcol(r, p) = $attach(:, tr: #r, br: #p)$
-#let infp = $[0, oo]_(times.o^*)$
+// typing colon:  tcol(r) renders ":" with sensitivity r on top
+#let tcol(r) = $attach(:, tr: #r)$
+
+#let prop = "Prop";
 
 = Preliminaries on extended Reals numbers
 
@@ -95,6 +96,28 @@ We will write $d_X$ instead of $d_infinity^X$ when it is clear from the context 
   In each case the bounding quantity $max |x_i - y_i|$ is exactly the sup (Chebyshev) distance $d_oo (x, y)$, so $|M_p (x) - M_p (y)| <= d_oo (x, y)$. Hence for $p in {1, +oo, -oo}$ the $p$-mean is $1$-Lipschitz, i.e. non-expansive ($r = 1$) for $d_oo$, which establishes the claim.
 ]<def:lip-p-mean>
 
+We record here the Lipschitz facts that the soft connectives and quantifiers of the inner logic (introduced later) rely on for soundness. All of them live in the _norm regime_ $|p| >= 1$.
+
+#proposition([$M_p$ is non-expansive for $d_oo$ at every $p >= 1$])[
+  The bound of @def:lip-p-mean is not special to $p in {1, +oo, -oo}$: for all $p in [1, +oo]$ the normalised $p$-mean $M_p$ is non-expansive for the sup distance $d_oo$. On $(0, oo)^n$ it is differentiable and the $ell^1$-norm of its gradient is
+  $ sum_(i=1)^n partial_(x_i) M_p (x) = (M_(p-1)(x) \/ M_p (x))^(p-1) <= 1, $
+  because power means increase in their exponent ($M_(p-1) <= M_p$) and $p - 1 >= 0$; an $ell^1$-gradient bounded by $1$ is exactly $1$-Lipschitzness for $d_oo$. The closed-form cases of @def:lip-p-mean are the affine and lattice specialisations.
+] <def:lip-p-mean-gen>
+
+#lemma([Soft sums are short out of the tensor])[
+  For $p in [1, +oo]$ the $n$-ary $p$-sum $plus.o^p (a_1, ..., a_n) = (sum_i a_i^p)^(1\/p)$ is a short map $prop^(times.o n) -> prop$ for the _tensor_ (sum) metric of @def:extmet-cmon. In the additive presentation it is the $ell^p$-norm, and
+  $ |plus.o^p (a) - plus.o^p (a')| <= (sum_i |a_i - a'_i|^p)^(1\/p) <= sum_i |a_i - a'_i|, $
+  by the reverse triangle inequality followed by $ell^p <= ell^1$ (valid for $p >= 1$). The right-hand side is exactly the tensor distance, so the formation rule (P-$plus.o^s$) is sound.
+] <def:lip-psum-tensor>
+
+#corollary([Harmonic soft sums are short])[
+  The order-reversing involution $a |-> a^*$ (with $a^* = 1 \/ a$ and $0^* = oo$) is an isometry of $prop$. Since the harmonic $p$-sum factors as $plus.o^(-p)(a) = (plus.o^p (a^*))^*$, it is a composite of isometries with the short map of @def:lip-psum-tensor, hence itself short; likewise the harmonic $p$-mean $integral^(-p) = (integral^p (-)^*)^*$. So the harmonic obligations need no separate proof.
+] <def:lip-hsum>
+
+#remark([The quantifier case, and why $|p| >= 1$])[
+  For the soft quantifiers two non-expansiveness facts are used. _In the predicate argument_, $integral^(plus.minus p)$ is monotone and commutes with $[0, oo]$-suprema, so it is short between predicate fibres — this is what makes $forall^s, exists^s$ graded adjoints to reindexing. _In the measure argument_, $μ |-> integral φ dif μ$ is non-expansive for the Kantorovich distance of @def:wasserstein-monad: at $p = 1$ this is Kantorovich--Rubinstein duality against $1$-Lipschitz test functions, and for $p > 1$ it holds on $cal(W)_p$ under the usual moment conditions. All of this is confined to $|p| >= 1$: for $p in (0, 1)$ the $p$-"norm" violates the triangle inequality and the corresponding mean becomes _expansive_, which is exactly why the Wasserstein monad and the soft connectives are taken with $p >= 1$.
+]
+
 #definition([The category of $bold("CExtMet")$])[
   The category $bold("CExtMet")$ of complete extended metric spaces is defined by the following data:
   - objects: extended metric spaces $(X, d_X)$, that is, pairs consisting of a set $X$ together with an extended distance $d_X : X times X -> [0, +oo]$ satisfying @def:ext-met;
@@ -122,7 +145,27 @@ We will write $d_X$ instead of $d_infinity^X$ when it is clear from the context 
 
 The operator $X multimap Y$ denotes the set of non-expansive functions from $X$ to $Y$ endowed with point-wise supremum metric $d_(X multimap Y)(f, g) = sup_(x in X) d_Y (f(x), g(x))$. The counit of  the adjunction is function evaluation $"eval" : (X multimap Y) times.o X -> Y$.
 
-// Nonexpansive morphisms in CMet subsume the notion of Lipschitz continuity through the  rescaling functor $r X$which scalesdistance by a factor $r > 0$.
+#definition([Scaling functor and its boundary conventions])[
+  For $r in [0, oo]$ the _scaling_ functor $r(-) : bold("CExtMet") -> bold("CExtMet")$ leaves the underlying set unchanged and rescales the distance,
+  $ d_(r X)(x, x') = r dot d_X (x, x'), $
+  under the extended-arithmetic conventions $r dot oo = oo$ for $r > 0$ and $0 dot oo = 0$. A non-expansive map $r X -> Y$ is exactly an $r$-Lipschitz map $X -> Y$. At the two boundary scalars we fix:
+  - $0 X := bold(1)$, the terminal one-point space, so that a $0$-sensitive variable is genuinely _discarded_ — the indiscrete metric $0 dot d_X$ is collapsed to the point (note $0 X$ is otherwise _not_ isomorphic to $bold(1)$);
+  - $oo X$ is the ${0, oo}$-valued space with $d_(oo X)(x, x') = oo$ for $x eq.not x'$. Since $oo + oo = oo$, the diagonal $oo X -> oo X times.o oo X$ is non-expansive, so $oo X$ is _copyable_; this is what licenses the duplication of the recursion context in @def:guarded-fix and the rule (REC).
+] <def:scaling>
+
+#proposition([Scaling is strong monoidal in *CExtMet*])[
+  Because the tensor distance of @def:extmet-cmon is the _untruncated_ sum $d_X + d_Y$, the scaling functor is _strong_ monoidal with no side conditions: for all $r, s in [0, oo]$,
+  $ r(A times.o B) tilde.equiv r A times.o r B, quad (r s) A tilde.equiv r (s A), quad r bold(1) tilde.equiv bold(1), $
+  since $r(d_A + d_B) = r d_A + r d_B$ and $(r s) d_A = r(s d_A)$ hold _on the nose_. This contrasts with the $1$-bounded category *CMet*, where truncation forces the corresponding comparison maps to be isomorphisms only under provisos such as $s <= 1$ or $r >= 1$ (cf. @cmethol, Thm. 1); in *CExtMet* that bookkeeping disappears, and the structural rules need no truncation-induced conditions.
+] <def:scaling-monoidal>
+
+#definition([Coproducts in *CExtMet*])[
+  The coproduct $A + B$ has the disjoint union as underlying set, with the components kept maximally apart:
+  - $d_(A + B)("inj"_1 a, "inj"_1 a') = d_A (a, a')$,
+  - $d_(A + B)("inj"_2 b, "inj"_2 b') = d_B (b, b')$,
+  - $d_(A + B)("inj"_1 a, "inj"_2 b) = oo$.
+  The injections are isometries, and any pair of non-expansive maps $A ->^("inl") C$, $B ->^("inr") C$ copairs to a non-expansive $A + B -> C$. The $oo$-separation is _scale-invariant_, $r dot oo = oo$ for every $r > 0$, so the comparison $r(A + B) tilde.equiv r A + r B$ holds for all $r > 0$; it degenerates only at $r = 0$, which would merge the two components.
+] <def:coproduct>
 
 = Fixed points of non-expansive maps
 
@@ -137,26 +180,30 @@ More generally, for any $X in bold("CExtMet")$ and non-expansive $f : X times.o_
 $ "fp"(f) : X -> Y, quad "fp"(f)(x) = "fix"(y |-> f(x, y)) $
 is itself non-expansive.
 
+#remark([Banach in the extended setting])[
+  In an _extended_ metric the contraction iteration may start at infinite displacement, $d_Y (y_0, f(y_0)) = oo$, and then $d_Y (f^n y_0, f^(n+1) y_0) <= p^n dot oo = oo$ never decreases. Banach's theorem therefore applies _within each galaxy_, i.e. each maximal subspace on which distances are finite (the equivalence classes of $x tilde y arrow.l.r.double d(x, y) < oo$). A $p$-contraction maps each galaxy into itself and has a unique fixed point there, so $"fix"$ is well-defined; concretely this is guaranteed by working with the finite-moment Wasserstein space $cal(W)_p$ of @def:wasserstein-monad. The typing rule (FIX) is unaffected: it still only requires $p < 1$.
+]
+
 
 = Probability Measures
 
-We introduce the Wasserstein monad $cal(P)_p$ with $p >= 1$ on *CExtMet* together with its algebraic presentation as the free interpolative barycentric algebra @FreeWassersteinAlgebras.
+We introduce the Wasserstein monad $cal(W)_p$ with $p >= 1$ on *CExtMet* together with its algebraic presentation as the free interpolative barycentric algebra @FreeWassersteinAlgebras.
 
 
 #definition([Wasserstein monad])[
-  The _Wasserstein monad_ on *CExtMet* is the triple $(cal(P)_p, delta, m)$ defined as:
-  - an endofunctor $cal(P)_p : bold("CExtMet") -> bold("CExtMet")$
+  The _Wasserstein monad_ on *CExtMet* is the triple $(cal(W)_p, delta, m)$ defined as:
+  - an endofunctor $cal(W)_p : bold("CExtMet") -> bold("CExtMet")$
     sending each object $(X, tau, d)$ to the space of Radon probability
     measures on $X$ with the Wasserstein distance, and each
     continuous-short map $f$ to its pushforward $mu mapsto mu compose f^(-1)$;
-  - a unit operator $delta_X : X -> cal(P)_p X$ sending a point to the corresponding Dirac measure;
-  - a join operator $mu_X : cal(P)_p cal(P)_p X -> cal(P)_p X$ given by the usual expectation;
+  - a unit operator $delta_X : X -> cal(W)_p X$ sending a point to the corresponding Dirac measure;
+  - a join operator $mu_X : cal(W)_p cal(W)_p X -> cal(W)_p X$ given by the usual expectation;
 
 
   Subject to the laws:
 
-  - unit:  $mu_X compose delta_(cal(P)_p X) = mu_X compose cal(P)_p delta_X = "id"_(cal(P)_p X)$
-  - associativity: $mu_X compose m_(cal(P)_p X) = mu_X compose cal(P)_p mu_X$.
+  - unit:  $mu_X compose delta_(cal(W)_p X) = mu_X compose cal(W)_p delta_X = "id"_(cal(W)_p X)$
+  - associativity: $mu_X compose m_(cal(W)_p X) = mu_X compose cal(W)_p mu_X$.
 ] <def:wasserstein-monad>
 
 
@@ -173,7 +220,7 @@ This monad has an algebraic presentation as the free  complete interpolative bar
 
 A homomorphism $f : X -> Y$ of IB algebras is a continuous-short map such that $f(x amp.inv_p y) = f(x) amp.inv_p f(y)$ for all $x, y in X$ and $p in (0, 1)$.
 
-For every $X in bold("CExtMet")$, the space $cal(P)_p X$ is an interpolative barycentric algebra under the pointwise convex combination $mu amp.inv_p nu = p mu + (1 - p) nu$. It axiomatizing probabilistic choice by means of this binary convex combination operations ($plus.o_p$).
+For every $X in bold("CExtMet")$, the space $cal(W)_p X$ is an interpolative barycentric algebra under the pointwise convex combination $mu amp.inv_p nu = p mu + (1 - p) nu$. It axiomatizing probabilistic choice by means of this binary convex combination operations ($plus.o_p$).
 
 
 
@@ -189,7 +236,7 @@ The syntax is based on a simply-typed $lambda$-calculus with products and sums, 
 $
   M, N ::= & x | () | lambda x. M | M #h(0.3em) N | chevron.l M, N chevron.r | pi_1 M | pi_2 M | "let" x = M "in" N \
          | & #h(0.5em) "inl" M | "inr" M | "case" M "of" "inl" x => N | "inr" y => N \
-         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M amp.inv_p N | 0 | "succ"(M) | "rec"(u, (x,t).t, v)
+         | & #h(0.5em) "fix" x. M | (M, N) | delta M | M amp.inv_p N | "zero" | "succ"(M) | "rec"(u, (x,t).t, v)
 $
 
 There are two pairs constructors, $chevron.l M, N chevron.r$ and $(M, N)$, corresponding to the Cartesian and monoidal  products, respectively. The first one is eliminated using the projections $pi_i M$, whereas the second one is eliminated using $( "let" x = M "in" N)$. The term "()" is unit value. The injections "inl" and "inr" form expressions of sum type, which are eliminated by case analysis  $"case" M "of" "inl" x => N | "inr" y => N$.
@@ -197,7 +244,7 @@ The term $delta M$ denotes a distribution, and $M amp.inv_p N$ the convex sumof 
 
 The types of the calculus are defined by the grammar:
 $
-  A, B ::= & NN | 1 | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(P) A
+  A, B ::= & NN | 1 | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A
 $
 
 essentially corresponding to the constructions of the previous section. Although rescaling of metric  spaces played a central role in the previous section, it is not a primitive type former in the calculus.
@@ -207,8 +254,8 @@ Instead, it is part of the tensor type $A attach(times.o, bl: r, br: s) B$ and f
 
 
 
-#remark([Tracking $p$ and $q$ in the typing judgement])[
-  @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a resource aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$.
+#remark([Softness lives on the logical entailment, not the typing judgement])[
+  @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a predicate aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$. For this reason softness is tracked as a grade on the entailment of the inner logic, and not on the term-level typing judgement.
 ]
 
 Terms are typed with the judgement:
@@ -218,17 +265,31 @@ Terms are typed with the judgement:
   inset: 5pt,
 )[
   $
-    Γ ⊢ t tcol(r, p) A
+    Γ ⊢ t : A
   $
 ])
 
-where $Γ$ is a context of variable bindings, $t$ is a term of type $A$ graded by $r$ the sensitivity annotations for probabilistic choice described in @def:ib-algebra and @def:guarded-fix, and $p$ is the degree of softness for tracking @def:holder.
+where $Γ$ is a context of variable bindings, $t$ is a term of type $A$.
+
+In context the sensitivity of a variable $x$ is tracked by annotating its type with a sensitivity index $r$ as in the following context judgment:
+
+#align(center, box(
+  stroke: .5pt,
+  inset: 5pt,
+)[
+  $
+    Γ, x tcol(r) A
+  $
+])
+
+
+We track the sensitivity $r$, which controls the Lipschitz behaviour of terms and, in particular, probabilistic choice described in @def:ib-algebra and @def:guarded-fix. Softness is not a term-level grade: it grades the entailment of the inner logic (@def:holder), and is introduced later, not in the term calculus.
 
 
 === Structural rules
 
 The notation $Γ,Γ'$ denotes the concatenation of contexts with disjoint variable bindings.
-The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are defined to keep track of the _sensitivities_ and _softness_ of the resources in the context.
+The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined to keep track of the _sensitivities_ of the resources in the context.
 
 #let ctx = prooftree(rule(
   name: [],
@@ -240,30 +301,20 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   $Γ :: "ctx"$,
   $x in.not Γ$,
   $r in [0, oo]$,
-  $p in infp$,
   // ---------------------------------------
-  $Γ, x tcol(r, p) A :: "ctx"$,
-))
-
-#let relax = prooftree(rule(
-  name: [],
-  $Γ, x tcol(r, q) A ⊢ t : B$,
-  $p <= q$,
-  // ---------------------------------------
-  $Γ, x tcol(r, p) A ⊢ t : B$,
+  $Γ, x tcol(r) A :: "ctx"$,
 ))
 
 #align(center, rule-set(
   ctx,
   abstraction,
-  relax,
 ))
 
 #definition[context scaling operations][
-  - $emptyctx plus.double emptyctx equiv emptyctx$
+  - $emptyctx ⧺ emptyctx equiv emptyctx$
   - $r emptyctx equiv emptyctx$
-  - $(Γ, x tcol(r, p) A) plus.double (Γ', x tcol(s, q) A) equiv Γ plus.double Γ', x tcol(r + s, p + q) A)$
-  - $r(Γ, x tcol(s, p) A) equiv r(Γ), x tcol(r dot s, p) A$
+  - $(Γ, x tcol(r) A) ⧺ (Γ', x tcol(s) A) equiv Γ ⧺ Γ', x tcol(r + s) A$
+  - $r(Γ, x tcol(s) A) equiv r(Γ), x tcol(r dot s) A$
 ]
 
 === Rules for ordinary terms
@@ -271,15 +322,13 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 #let var = prooftree(rule(
   name: [(VAR)],
   $r >= 1$,
-  $p in infp$,
   // ------------------------------------------------
-  $Γ, x tcol(r, p) A, Γ' ⊢ x : A$,
+  $Γ, x tcol(r) A, Γ' ⊢ x : A$,
 ))
 
 #let abs = prooftree(rule(
   name: [(ABS)],
-  $Γ, x tcol(r, p) A ⊢ t : B$,
-  $p in infp$,
+  $Γ, x tcol(r) A ⊢ t : B$,
   // --------------------------
   $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
 ))
@@ -289,7 +338,7 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   $Γ ⊢ t : A attach(⊸, br: r) B$,
   $Γ' ⊢ u : A$,
   // --------------------------
-  $Γ plus.double r Γ' ⊢ t space u : B$,
+  $Γ ⧺ r Γ' ⊢ t space u : B$,
 ))
 
 #let unit = prooftree(rule(
@@ -324,12 +373,11 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 #let case = prooftree(rule(
   name: [(CASE)],
   $Γ' ⊢ t : A + B$,
-  $Γ, x tcol(r, p) A ⊢ u : C$,
-  $Γ, y tcol(r, p) B ⊢ v : C$,
-  $p in infp$,
-  $r >= 1$,
+  $Γ, x tcol(r) A ⊢ u : C$,
+  $Γ, y tcol(r) B ⊢ v : C$,
+  $r > 0$,
   // --------------------------
-  $Γ ⧺ r Γ' ⊢ "case" t "of" ["inj"_1 x => u | "inj"_2 y] tcol("", p) C$,
+  $Γ ⧺ r Γ' ⊢ "case" t "of" ["inj"_1 x => u | "inj"_2 y] : C$,
 ))
 
 #let tensor = prooftree(rule(
@@ -337,7 +385,71 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
   $Γ ⊢ t : A$,
   $Γ' ⊢ u : B$,
   // --------------------------
-  $r Γ ⧺ s Γ' ⧺ Γ'' ⊢ (t, u) tcol("", p) A attach(⊗, br: s, bl: r) B$,
+  $r Γ ⧺ s Γ' ⧺ Γ'' ⊢ (t, u) : A attach(⊗, br: s, bl: r) B$,
+))
+
+#let letin = prooftree(rule(
+  name: [(LET-$times.o$)],
+  $Γ, x tcol(r) A, y tcol(s) B ⊢ t : C$,
+  $Γ' ⊢ u : A attach(⊗, br: r, bl: s) B$,
+  // -------------------------------------------------------------------------
+  $Γ ⧺ Γ' ⊢ "let" (x, y) = t "in" u : C$,
+))
+
+#let dirac = prooftree(rule(
+  name: [($delta$)],
+  $Γ ⊢ t : A$,
+  // --------------------------
+  $Γ ⊢ delta space t : cal(W) A$,
+))
+
+#let probchoice = prooftree(rule(
+  name: [($amp.inv_p$)],
+  $Γ ⊢ t : cal(W) A$,
+  $Γ' ⊢ u : cal(W) A$,
+  $p in (0, 1)$,
+  // --------------------------
+  $p Γ ⧺ (1-p) Γ' ⊢ t amp.inv_p u : cal(W) A$,
+))
+
+#let letalg = prooftree(rule(
+  name: [(LET)],
+  $Γ, x tcol(r) A ⊢ t: E$,
+  $Γ' ⊢ u : cal(W) A$,
+  "E IB algebra",
+  $r < infinity$,
+  // -------------------------------------------------------------------------
+  $Γ ⧺ r Γ' ⊢ "let" x = u "in" t : E$,
+))
+
+#let zero = prooftree(rule(
+  name: [(ZERO)],
+  // --------------------------
+  $Γ ⊢ "zero" : NN$,
+))
+
+#let succ = prooftree(rule(
+  name: [(SUCC)],
+  $Γ ⊢ t : NN$,
+  // --------------------------
+  $Γ ⊢ "succ"(t) : NN$,
+))
+
+#let rec = prooftree(rule(
+  name: [(REC)],
+  $Γ ⊢ z : A$,
+  $Γ', x tcol(1) A, y tcol(1) NN ⊢ s : A$,
+  $Γ'' ⊢ n : NN$,
+  // -------------------------------------------------------------------------
+  $Γ ⧺ ∞ Γ' ⧺ Γ'' ⊢ "rec"(z, (x,y).s, n) : A$,
+))
+
+#let fix = prooftree(rule(
+  name: [(FIX)],
+  $(1-r) Γ, x tcol(r) A ⊢ t : A$,
+  $r < 1$,
+  // --------------------------
+  $Γ ⊢ "fix" x. t : A$,
 ))
 
 #align(
@@ -352,6 +464,14 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
     inj,
     case,
     tensor,
+    letin,
+    dirac,
+    probchoice,
+    letalg,
+    zero,
+    succ,
+    rec,
+    fix,
   ),
 )
 
@@ -359,83 +479,228 @@ The sum of two context $Γ plus.double Γ'$ and scaling $r Γ$ of contexts are d
 
 = Logic
 
-Consider the extended positive reals $[0, infinity]$ with their usual order $<=$. We define an ∗-autonomous poset $([0, +oo],1 , <=, times.o.big, (-)^*)$ where $a times.o.big b$ is defined by multiplication $a dot b$ extended with the rules
-$forall a in (0, infinity], a times.o.big infinity = infinity$ and $0 times.o.big infinity = 0$. The inversion $(-)^*: [0, +oo]^(op) -> [0, infinity]$ yields a duality and defined as $forall a in (0, infinity), a^* = 1 / a$ extended with the rules $1/0 = infinity$ and $1/infinity=0$.
-
-Now on the same poset $[0, infinity]$ consider the sum $plus.o.big$ trivially defined by $a plus.o.big b = a + b$ extended with the rules $a plus.o.big infinity = infinity$ for every $a in [0, infinity]$. The resulting structure is a commutative semiring, and the multiplication $times.o.big$ distributes over the sum $plus.o.big$.
-// The harmonic sum is defined as $a plus.o.big^* b := (a^* plus.o.big b^*)^*$. Choosing $0 < p < infinity$, we can conjugatet these operationsby exponentiation to obtain p-sum and harmonic p-sum:
-
-
-We introduce a first order quantitative logic to reason about the terms of the calculus.
-Qualitative truth values are valuated in the extended non-negative reals $[0, infinity]$.
-To represent the two modes of qualitative logic with their different properties, we consider
-the type $"Prop"_plus.o$ of additive where $a = 0$ 'false' and everything else 'true'.
-$
-  "Prop"_(plus.o) = (
-    [-oo, +oo], <=,
-    bot, top,
-    0,
-    -(-),
-    forall,
-    exists
-  )
-$
-
-and the type $"Prop"_times.o$ of multiplicative where we pick $<= 1$ as threshold of truth.
+We now turn the poset $prop$ into the carrier of an _inner logic_. Predicates are terms of type $prop$, and reasoning is carried out by a _graded_ entailment whose grade is the softness $p$. Throughout, $Δ$ ranges over _discrete_ typing contexts (every variable at sensitivity $∞$; we write $Δ, x : A$ for $Δ, x tcol(∞) A$), following Bacci--Møgelberg in keeping term-level sensitivities irrelevant to logical derivability. Softness, by contrast, is tracked on the entailment, exactly as in @def:holder.
 
 $
-  "Prop"_(times.o) = (
+  prop = (
     [0, +oo], <=,
-    bot,
-    top,
-    1,
-    −•, (-)^*,
-    and, or,
-    forall, exists
+    0, 1, oo,
+    times.o, times.o^*, multimap,
+    (-)^*,
+    plus.o^s, plus.o^(-s),
+    exists^s, forall^s
   )
 $
 
-At first glance, $"Prop"_plus.o$ does not fit in *CExtMet*: its carrier $[-infinity, +infinity]$ admits negative differences, so the candidate distance $|u - v|$ fails the axioms of @def:ext-met.
-This obstruction dissolves once we recognize that $"Prop"_plus.o$ and $"Prop"_times.o$ are two presentations of the same signature, related by the Napier isomorphism.
-We therefore take $"Prop"_times.o$ as the primary internal definition and read $"Prop"_plus.o$ as its Napier-transported image.
-
-#observation([On Lipschitz continuity for Napier isomorphism])[
-  In the Euclidean metric, neither $log$ nor $exp$ is Lipschitz: $log'(x) = 1/x$
-  blows up at $0$, and $exp'(u) = e^u$ blows up at $+oo$. The sensitivity-$1$
-  typing above is sound only because $d_("log")$ on $"Prop"_times.o$ is defined
-  as the pullback of the Euclidean distance along $log$, making both maps
-  isometries by construction.
-] <rem:napier-lipschitz>
+Here $0 = bot$ (false) and $oo = top$ (true) are the lattice bounds, and $1$ is the multiplicative unit. The multiplicative layer $(times.o, times.o^*, multimap)$ with involution $(-)^*$ (where $a^* = 1 \/ a$) is the $*$-autonomous isomix core $([0, oo], 1, times.o, (-)^*)$, in which $multimap$ is the residual $a multimap b = a^* times.o^* b$. The additives form the _soft families_ $plus.o^s$ (disjunctive, unit $0$) and $plus.o^(-s)$ (conjunctive, unit $oo$), recovering the hard lattice operations $or = plus.o^oo$ and $and = plus.o^(-oo)$ in the limit $s -> oo$; the soft quantifiers $exists^s, forall^s$ are their infinitary ($p$-mean) counterparts. This is the MALL signature with its additives spread into a softness-indexed family, following QLL.
 
 
-We introduce two term-level constants witnessing the isomorphism:
-$
-  log : "Prop"_times.o attach(multimap, br: 1) "Prop"_plus.o
-  quad quad
-  exp : "Prop"_plus.o attach(multimap, br: 1) "Prop"_times.o
-$
-Both carry sensitivity $1$ because, under $d_("log")$ on $"Prop"_times.o$, they
-are isometries. The following judgmental equalities axiomatize the isomorphism:
+// graded turnstile and soft connectives
+#let ent(p) = $attach(tack.r, br: #p)$
+#let psum(s) = $attach(plus.o, tr: #s)$
+#let fa(s) = $attach(forall, tr: #s)$
+#let ex(s) = $attach(exists, tr: #s)$
 
-#figure(
-  caption: [Napier isomorphism axioms.],
-  table(
-    columns: (1fr, 1fr),
-    align: (left, left),
-    stroke: none,
-    table.header([$"Prop"_times.o arrow "Prop"_plus.o$], [$"Prop"_plus.o arrow "Prop"_times.o$]),
-    $log(exp u) equiv u$, $exp(log a) equiv a$,
-    $log(a times.o.big b) equiv log a + log b$, $exp(u + v) equiv exp u times.o.big exp v$,
-    $log(a attach(times.o.big, tr: *) b) equiv log a attach(+, tr: *) log b$,
-    $exp(u attach(+, tr: *) v) equiv exp u attach(times.o.big, tr: *) exp v$,
+== Typing rules for logical predicates
 
-    $log 1 equiv 0$, $exp 0 equiv 1$,
-    $log bot_times.o equiv bot_plus.o$, $exp bot_plus.o equiv bot_times.o$,
-    $log top_times.o equiv top_plus.o$, $exp top_plus.o equiv top_times.o$,
-    $log(a^*) equiv -(log a)$, $exp(-u) equiv (exp u)^*$,
-    $log(a multimap b) equiv log b - log a$, $exp(v - u) equiv exp u multimap exp v$,
-  ),
-) <fig:napier-axioms>
+A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $prop$ is itself an object of *CExtMet*, predicates are non-expansive maps, so their formation _tracks sensitivity_ exactly like ordinary terms: the tensor-like connectives ($=, times.o, multimap, plus.o^s$) sum their contexts as $Γ ⧺ Γ'$, propositions can be _scaled_ by $r$, and a quantifier binds its variable at sensitivity $∞$. Logical _derivability_, by contrast, only uses the discrete context $Δ$ introduced below. The rules are the soft analogue of the predicate-formation rules of @cmethol.
+
+#let prop-tt = prooftree(rule(name: [($⊤_i$)], $Γ ⊢ top : prop$))
+
+#let prop-ff = prooftree(rule(name: [($⊥_i$)], $Γ ⊢ bot : prop$))
+
+#let prop-eq = prooftree(rule(
+  name: [(P-=)],
+  $Γ ⊢ t : A$,
+  $Γ' ⊢ u : A$,
+  $Γ ⧺ Γ' ⊢ (t attach(=, br: A) u) : prop$,
+))
+
+#let prop-tens = prooftree(rule(
+  name: [(P-⊗)],
+  $Γ ⊢ φ : prop$,
+  $Γ' ⊢ ψ : prop$,
+  $Γ ⧺ Γ' ⊢ φ times.o ψ : prop$,
+))
+
+#let prop-imp = prooftree(rule(
+  name: [($⊸_i$)],
+  $Γ ⊢ φ : prop$,
+  $Γ' ⊢ ψ : prop$,
+  $Γ ⧺ Γ' ⊢ φ multimap ψ : prop$,
+))
+
+#let prop-scale = prooftree(rule(
+  name: [(P-scale)],
+  $Γ ⊢ φ : prop$,
+  $r in [0, oo]$,
+  $r Γ ⧺ Γ' ⊢ r φ : prop$,
+))
+
+#let prop-dual = prooftree(rule(
+  name: [(P-$*$)],
+  $Γ ⊢ φ : prop$,
+  $Γ ⊢ φ^* : prop$,
+))
+
+#let prop-sum = prooftree(rule(
+  name: [($plus.o^s$)],
+  $Γ ⊢ φ : prop$,
+  $Γ' ⊢ ψ : prop$,
+  $s in [0, oo]$,
+  $Γ ⧺ Γ' ⊢ φ psum(s) ψ : prop$,
+))
+
+#let prop-hsum = prooftree(rule(
+  name: [($plus.o^(-s)$)],
+  $Γ ⊢ φ : prop$,
+  $Γ' ⊢ ψ : prop$,
+  $s in [0, oo]$,
+  $Γ ⧺ Γ' ⊢ φ psum(-s) ψ : prop$,
+))
+
+#let prop-all = prooftree(rule(
+  name: [($forall^s_i$)],
+  $Γ, x tcol(oo) A ⊢ φ : prop$,
+  $s in [0, oo]$,
+  $Γ ⊢ fa(s) x : A. space φ : prop$,
+))
+
+#let prop-ex = prooftree(rule(
+  name: [($exists^s_i$)],
+  $Γ, x tcol(oo) A ⊢ φ : prop$,
+  $s in [0, oo]$,
+  $Γ ⊢ ex(s) x : A. space φ : prop$,
+))
+
+#align(center, rule-set(
+  prop-tt,
+  prop-ff,
+  prop-eq,
+  prop-tens,
+  prop-imp,
+  prop-scale,
+  prop-dual,
+  prop-sum,
+  prop-hsum,
+  prop-all,
+  prop-ex,
+))
+
+The tensor connectives are non-expansive out of $prop times.o prop$ (hence the sum $Γ ⧺ Γ'$), matching @def:extmet-cmon; scaling $r φ$ comes from $r prop multimap prop$, the spare $Γ'$ absorbing weakening when $r = 0$. The soft additives $plus.o^s$ and their harmonic duals $plus.o^(-s)$ interpolate between the linear unit and the hard lattice operations $or.big = plus.o^oo$ and $and.big = plus.o^(-oo)$, which additionally admit a sharper shared-context rule (a Cartesian pairing on $Γ$). The dual $(-)^*$ is the involution of @def:holder.
+
+== The graded entailment judgement
+
+The logical judgement has the shape
+
+#align(center, box(stroke: .5pt, inset: 5pt)[
+  $ Δ thin | thin Ψ ent(p) φ $
+])
+
+where $Δ$ is a discrete typing context, $Ψ = ψ_1, ..., ψ_n$ a list of predicates (the _logical context_), $φ$ the conclusion, and $p ∈ [0, ∞]$ the _softness grade_. The intended reading is the graded entailment of the soft quantitative logic: writing $times.o.big Ψ$ for the tensor of the context, the judgement is _valid_ when, up to the chosen truth threshold,
+
+$ 1 ≤ integral_x^(-p) ((times.o.big Ψ) multimap φ), $
+
+i.e. the harmonic $p$-mean of the implication over the (Wasserstein) space of the discrete context. The grade $p$ is the exponent of that $p$-mean: $p = ∞$ recovers the _hard_ entailment $and.big_x ((times.o.big Ψ) multimap φ)$, while smaller $p$ is _softer_. The grade monoid is $([0, ∞], plus.o^*, ∞)$: its unit is $∞$ (graded reflexivity), and grades compose under cut by _harmonic sum_ $plus.o^*$, with $1 / (p plus.o^* q) = 1 / p + 1 / q$, the Hölder conjugacy of @def:holder.
+
+#let l-ass = prooftree(rule(name: [(ASS)], $Δ thin | thin Ψ, φ ent(oo) φ$))
+#let l-cut = prooftree(rule(
+  name: [(CUT)],
+  $Δ | Ψ ent(p) φ$,
+  $Δ | Φ, φ ent(q) χ$,
+  $Δ | Φ, Ψ ent(p plus.o^* q) χ$,
+))
+#let l-relax = prooftree(rule(
+  name: [(RELAX)],
+  $Δ | Ψ ent(q) φ$,
+  $p <= q$,
+  $Δ | Ψ ent(p) φ$,
+))
+#let l-weak = prooftree(rule(
+  name: [(WEAK)],
+  $Δ | Ψ ent(p) φ$,
+  $Δ | Ψ, ψ ent(p) φ$,
+))
+
+#align(center, rule-set(l-ass, l-cut, l-relax, l-weak))
+
+== Connectives and quantifiers
+
+The multiplicative fragment is residuated ($times.o ⊣ multimap$); note how cut-like rules accumulate softness by harmonic sum, while the introduction of $multimap$ leaves the grade untouched.
+
+#let l-tensR = prooftree(rule(
+  name: [(⊗R)],
+  $Δ | Ψ ent(p) φ$,
+  $Δ | Φ ent(q) ψ$,
+  $Δ | Ψ, Φ ent(p plus.o^* q) φ times.o ψ$,
+))
+#let l-tensL = prooftree(rule(
+  name: [(⊗L)],
+  $Δ | Ψ, φ, ψ ent(p) χ$,
+  $Δ | Ψ, φ times.o ψ ent(p) χ$,
+))
+#let l-impR = prooftree(rule(
+  name: [(⊸R)],
+  $Δ | Ψ, φ ent(p) ψ$,
+  $Δ | Ψ ent(p) φ multimap ψ$,
+))
+#let l-impL = prooftree(rule(
+  name: [(⊸L)],
+  $Δ | Ψ ent(p) φ multimap ψ$,
+  $Δ | Φ ent(q) φ$,
+  $Δ | Ψ, Φ ent(p plus.o^* q) ψ$,
+))
+
+#align(center, rule-set(l-tensR, l-tensL, l-impR, l-impL))
+
+The soft disjunction $psum(s)$ (the $s$-sum of @def:holder) has the two semiadditive introductions, since $a <= a psum(s) b$ for every softness $s$. Equality is introduced by reflexivity.
+
+#let l-sumIL = prooftree(rule(
+  name: [($plus.o^s$-IL)],
+  $Δ | Ψ ent(p) φ$,
+  $Δ | Ψ ent(p) φ psum(s) ψ$,
+))
+#let l-sumIR = prooftree(rule(
+  name: [($plus.o^s$-IR)],
+  $Δ | Ψ ent(p) ψ$,
+  $Δ | Ψ ent(p) φ psum(s) ψ$,
+))
+#let l-eqI = prooftree(rule(
+  name: [(=I)],
+  $Δ ⊢ t : A$,
+  $Δ | Ψ ent(oo) (t attach(=, br: A) t)$,
+))
+
+#align(center, rule-set(l-sumIL, l-sumIR, l-eqI))
+
+The soft quantifiers are the graded adjoints to reindexing. We give the _adjunction_ rules, which hold at the matching grade $s$: universal introduction (right adjoint) and existential elimination (left adjoint).
+
+#let l-allI = prooftree(rule(
+  name: [($forall^s$-I)],
+  $Δ, x : A | Ψ ent(s) φ$,
+  $x in.not "FV"(Ψ)$,
+  $Δ | Ψ ent(s) fa(s) x : A. φ$,
+))
+#let l-exE = prooftree(rule(
+  name: [($exists^s$-E)],
+  $Δ, x : A | Ψ, φ ent(s) χ$,
+  $x in.not "FV"(Ψ, χ)$,
+  $Δ | Ψ, ex(s) x : A. φ ent(s) χ$,
+))
+
+#align(center, rule-set(l-allI, l-exE))
+
+#remark([Instantiation costs softness])[
+  The rules ($forall^s$-I) and ($exists^s$-E) are the unit and counit of the graded adjunctions $exists^s_pi tack.l_s pi^* tack.l_s forall^s_pi$ and hold at the matching grade $s$. The _dual_ counit rules — universal instantiation $forall^s x. φ ⟹ φ[t \/ x]$ and existential witnessing $φ[t \/ x] ⟹ exists^s x. φ$ — are _not_ sound at grade $s$ for finite $s$: a single value $φ(t)$ need not bound the harmonic $p$-mean $integral^(-s) φ$, since a point is dominated by the mean only when $s = ∞$. They hold either at $s = ∞$ (the hard quantifiers $and.big \/ or.big$, recovering the $forall \/ exists$ of Bacci--Møgelberg) or with a grade penalty. Determining that penalty is the soft analogue of the side condition $r < ∞$ used for the hard rules, and is left open.
+]
+
+#remark([Why one graded turnstile suffices])[
+  A _fixed_-$p$ entailment is not transitive — the naive $[0, ∞]$-enriched relation on predicates lacks a cut rule. Grading the turnstile and composing grades by harmonic sum in (CUT) restores transitivity, which is precisely why no hypersequent machinery is needed here.
+]
+
+#remark([Truth convention still to be fixed])[
+  The rules above are stated independently of whether $0$ or $∞$ is the designated truth value of $prop$; the presentations $prop_times.o$ and $prop_plus.o$ are Napier-dual. The semantic clause must commit to one: with the distance reading $[| t attach(=, br: A) u |] = d_A ([|t|], [|u|])$ one takes $0 = top$ and reverses the order (as in Bacci--Møgelberg); with the QLL reading one takes $∞ = top$. The current order $<=$ and threshold of $prop_times.o$ should be reconciled with whichever choice is made, and the sign of $integral^(plus.minus p)$ in the semantic clause follows accordingly.
+]
 
 == semantics
 
@@ -443,7 +708,7 @@ are isometries. The following judgmental equalities axiomatize the isomorphism:
 
 == Properties of neural networks.
 
-Given a neural network $cal(N): RR^m arrow.r RR^n$, the verification property usually takes the formof a Hoare triple $forall x in RR^. cal(P)(x) arrow.r cal(Q)(x)$, where $cal(P)$ and $cal(Q)$can be arbitrary properties $RR multimap bold("Prop")$ obtained by using
+Given a neural network $cal(N): RR^m arrow.r RR^n$, the verification property usually takes the formof a Hoare triple $forall x in RR^. cal(W)(x) arrow.r cal(Q)(x)$, where $cal(W)$ and $cal(Q)$can be arbitrary properties $RR multimap bold(prop)$ obtained by using
 
 #definition([$epsilon$-$delta$-robustness])[
   Given a neural network $N$ and a vector $v$, consider the specification that requires that for all inputs $x$ that are within $epsilon$ distance from $v$,
