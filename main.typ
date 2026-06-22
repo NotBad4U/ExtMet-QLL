@@ -3,7 +3,7 @@
 #import "@preview/curryst:0.6.0": prooftree, rule, rule-set
 
 #show: para-lipics.with(
-  title: [Internal QLL in CExtMet],
+  title: [Internal Quantitative Linear Logic for a Probabilistic Metric Calculus],
   title-running: [Dummy short title],
   authors: (
     (
@@ -418,7 +418,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   $Γ' ⊢ u : cal(W) A$,
   "E IB algebra",
   $r < infinity$,
-  // -------------------------------------------------------------------------
+  // ---------------------------------------
   $Γ ⧺ r Γ' ⊢ "let" x = u "in" t : E$,
 ))
 
@@ -440,7 +440,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   $Γ ⊢ z : A$,
   $Γ', x tcol(1) A, y tcol(1) NN ⊢ s : A$,
   $Γ'' ⊢ n : NN$,
-  // -------------------------------------------------------------------------
+  // ------------------------------------------
   $Γ ⧺ ∞ Γ' ⧺ Γ'' ⊢ "rec"(z, (x,y).s, n) : A$,
 ))
 
@@ -477,17 +477,59 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 
 == Semantics
 
+
+#columns(3)[
+  $
+                             ⟦ NN ⟧ & ≜ NN \
+                      ⟦ A times B ⟧ & ≜ ⟦ A ⟧ times ⟦ B ⟧ \
+    ⟦ A attach(⊗, bl: r, br: s) ψ ⟧ & ≜ r ⟦ A ⟧ ⊗ s ⟦ B ⟧ \
+  $
+  #colbreak()
+  $
+                 ⟦ 1 ⟧ & ≜ bold("1") \
+             ⟦ A + B ⟧ & ≜ ⟦ A ⟧ + ⟦ B ⟧ \
+    ⟦ φ multimap_r ψ ⟧ & ≜ r⟦ A ⟧ multimap ⟦ B ⟧ \
+  $
+  #colbreak()
+  $
+                   ⟦ cal(W)A ⟧ & ≜ cal(W)⟦ A ⟧ \
+       ⟦ chevron.l chevron.r ⟧ & ≜ bold("1") \
+    ⟦ Γ, x attach(:, tr: r) A⟧ & ≜ ⟦ Γ ⟧ times.o r⟦ A⟧
+  $
+]
+
+Judgements are interpreted as morphisms:
+
+$
+  ⟦ Γ, x attach(:, tr: r) A⟧: ⟦ Γ ⟧ arrow r⟦ A ⟧
+$
+
+We define the structural semantics function:
+
+
+#columns(2)[
+  $
+    "split" & : ⟦ Γ ⧺ Γ' ⟧ arrow ⟦ Γ ⟧ times.o ⟦ Γ' ⟧ \
+    "split" & : ⟦ p Γ ⟧ arrow p ⟦ Γ ⟧ \
+  $
+  #colbreak()
+  $
+    "split" & : ⟦ Γ , Δ , Γ' ⟧ arrow ⟦ Γ, Γ' ⟧ \
+     "weak" & : ⟦ Γ ⧺ Γ' ⟧ arrow ⟦ Γ ⟧ \
+  $
+]
+
 = Logic
 
 We now turn the poset $prop$ into the carrier of an _inner logic_. Predicates are terms of type $prop$, and reasoning is carried out by a _graded_ entailment whose grade is the softness $p$. Throughout, $Δ$ ranges over _discrete_ typing contexts (every variable at sensitivity $∞$; we write $Δ, x : A$ for $Δ, x tcol(∞) A$), following Bacci--Møgelberg in keeping term-level sensitivities irrelevant to logical derivability. Softness, by contrast, is tracked on the entailment, exactly as in @def:holder.
 
 $
   prop = (
-    [0, +oo], <=,
-    0, 1, oo,
+    [0, +oo],
+    ⊥, ⊤,
     times.o, times.o^*, multimap,
     (-)^*,
-    plus.o^s, plus.o^(-s),
+    and^s, or^s,
     exists^s, forall^s
   )
 $
@@ -520,6 +562,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   name: [(P-⊗)],
   $Γ ⊢ φ : prop$,
   $Γ' ⊢ ψ : prop$,
+  // --------------------------
   $Γ ⧺ Γ' ⊢ φ times.o ψ : prop$,
 ))
 
@@ -527,6 +570,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   name: [($⊸_i$)],
   $Γ ⊢ φ : prop$,
   $Γ' ⊢ ψ : prop$,
+  // --------------------------
   $Γ ⧺ Γ' ⊢ φ multimap ψ : prop$,
 ))
 
@@ -534,12 +578,14 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   name: [(P-scale)],
   $Γ ⊢ φ : prop$,
   $r in [0, oo]$,
+  // ---------------------
   $r Γ ⧺ Γ' ⊢ r φ : prop$,
 ))
 
 #let prop-dual = prooftree(rule(
   name: [(P-$*$)],
   $Γ ⊢ φ : prop$,
+  // ----------------
   $Γ ⊢ φ^* : prop$,
 ))
 
@@ -548,6 +594,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   $Γ ⊢ φ : prop$,
   $Γ' ⊢ ψ : prop$,
   $s in [0, oo]$,
+  // --------------------------
   $Γ ⧺ Γ' ⊢ φ psum(s) ψ : prop$,
 ))
 
@@ -556,6 +603,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   $Γ ⊢ φ : prop$,
   $Γ' ⊢ ψ : prop$,
   $s in [0, oo]$,
+  // --------------------------
   $Γ ⧺ Γ' ⊢ φ psum(-s) ψ : prop$,
 ))
 
@@ -563,6 +611,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   name: [($forall^s_i$)],
   $Γ, x tcol(oo) A ⊢ φ : prop$,
   $s in [0, oo]$,
+  // --------------------------------
   $Γ ⊢ fa(s) x : A. space φ : prop$,
 ))
 
@@ -570,6 +619,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   name: [($exists^s_i$)],
   $Γ, x tcol(oo) A ⊢ φ : prop$,
   $s in [0, oo]$,
+  // -------------------------------
   $Γ ⊢ ex(s) x : A. space φ : prop$,
 ))
 
@@ -588,6 +638,29 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
 ))
 
 The tensor connectives are non-expansive out of $prop times.o prop$ (hence the sum $Γ ⧺ Γ'$), matching @def:extmet-cmon; scaling $r φ$ comes from $r prop multimap prop$, the spare $Γ'$ absorbing weakening when $r = 0$. The soft additives $plus.o^s$ and their harmonic duals $plus.o^(-s)$ interpolate between the linear unit and the hard lattice operations $or.big = plus.o^oo$ and $and.big = plus.o^(-oo)$, which additionally admit a sharper shared-context rule (a Cartesian pairing on $Γ$). The dual $(-)^*$ is the involution of @def:holder.
+
+=== Interpretation of logical predicate
+
+#columns(2)[
+  $
+          ⟦ ⊤ ⟧ & ≜ ∞ \
+    ⟦ t =_A u ⟧ & ≜ d_⟦ A ⟧ ∘ (⟦t⟧ ⊗ ⟦ u ⟧) ∘ "split" \
+      ⟦ φ ⊗ ψ ⟧ & ≜ ⊗ ∘ (⟦φ⟧ ⊗ ⟦ψ⟧) ∘ "split" \
+    ⟦ φ ⊗^* ψ ⟧ & ≜ ⊗^* ∘ (⟦φ⟧ ⊗ ⟦ψ⟧) ∘ "split" \
+      ⟦ φ ⊸ ψ ⟧ & ≜ space ⊸ ∘ (⟦φ⟧ ⊗ ⟦ψ⟧) ∘ "split" \
+        ⟦ φ^* ⟧ & ≜ (-)^* ∘ ⟦φ⟧ \
+  $
+  #colbreak()
+  $
+                ⟦ ⊥ ⟧ & ≜ 0 \
+          ⟦ φ ⊕^p ψ ⟧ & ≜ ⊕^p ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
+       ⟦ φ ⊕^(-p) ψ ⟧ & ≜ ⊕^(-p) ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
+            ⟦ φ ∨ ψ ⟧ & ≜ ⊕^infinity ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
+            ⟦ φ ∧ ψ ⟧ & ≜ ⊕^infinity ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
+    ⟦ ∃^p x : A . φ ⟧ & ≜ times.o.big^p_x ∘ "curry"(⟦φ⟧) \
+    ⟦ ∀^p x : A . φ ⟧ & ≜ times.o.big^(-p)_x ∘ "curry"(⟦φ⟧) \
+  $
+]
 
 == The graded entailment judgement
 
@@ -608,17 +681,20 @@ i.e. the harmonic $p$-mean of the implication over the (Wasserstein) space of th
   name: [(CUT)],
   $Δ | Ψ ent(p) φ$,
   $Δ | Φ, φ ent(q) χ$,
+  // --------------------------
   $Δ | Φ, Ψ ent(p plus.o^* q) χ$,
 ))
 #let l-relax = prooftree(rule(
   name: [(RELAX)],
   $Δ | Ψ ent(q) φ$,
   $p <= q$,
+  // --------------
   $Δ | Ψ ent(p) φ$,
 ))
 #let l-weak = prooftree(rule(
   name: [(WEAK)],
   $Δ | Ψ ent(p) φ$,
+  // -----------------
   $Δ | Ψ, ψ ent(p) φ$,
 ))
 
@@ -632,22 +708,26 @@ The multiplicative fragment is residuated ($times.o ⊣ multimap$); note how cut
   name: [(⊗R)],
   $Δ | Ψ ent(p) φ$,
   $Δ | Φ ent(q) ψ$,
+  // --------------------------------------
   $Δ | Ψ, Φ ent(p plus.o^* q) φ times.o ψ$,
 ))
 #let l-tensL = prooftree(rule(
   name: [(⊗L)],
   $Δ | Ψ, φ, ψ ent(p) χ$,
+  // --------------------------
   $Δ | Ψ, φ times.o ψ ent(p) χ$,
 ))
 #let l-impR = prooftree(rule(
   name: [(⊸R)],
   $Δ | Ψ, φ ent(p) ψ$,
+  // --------------------------
   $Δ | Ψ ent(p) φ multimap ψ$,
 ))
 #let l-impL = prooftree(rule(
   name: [(⊸L)],
   $Δ | Ψ ent(p) φ multimap ψ$,
   $Δ | Φ ent(q) φ$,
+  // ----------------------------
   $Δ | Ψ, Φ ent(p plus.o^* q) ψ$,
 ))
 
@@ -658,16 +738,19 @@ The soft disjunction $psum(s)$ (the $s$-sum of @def:holder) has the two semiaddi
 #let l-sumIL = prooftree(rule(
   name: [($plus.o^s$-IL)],
   $Δ | Ψ ent(p) φ$,
+  // --------------------------
   $Δ | Ψ ent(p) φ psum(s) ψ$,
 ))
 #let l-sumIR = prooftree(rule(
   name: [($plus.o^s$-IR)],
   $Δ | Ψ ent(p) ψ$,
+  // --------------------------
   $Δ | Ψ ent(p) φ psum(s) ψ$,
 ))
 #let l-eqI = prooftree(rule(
   name: [(=I)],
   $Δ ⊢ t : A$,
+  // ------------------------------------
   $Δ | Ψ ent(oo) (t attach(=, br: A) t)$,
 ))
 
@@ -679,12 +762,14 @@ The soft quantifiers are the graded adjoints to reindexing. We give the _adjunct
   name: [($forall^s$-I)],
   $Δ, x : A | Ψ ent(s) φ$,
   $x in.not "FV"(Ψ)$,
+  // --------------------------
   $Δ | Ψ ent(s) fa(s) x : A. φ$,
 ))
 #let l-exE = prooftree(rule(
   name: [($exists^s$-E)],
   $Δ, x : A | Ψ, φ ent(s) χ$,
   $x in.not "FV"(Ψ, χ)$,
+  // ------------------------------
   $Δ | Ψ, ex(s) x : A. φ ent(s) χ$,
 ))
 
