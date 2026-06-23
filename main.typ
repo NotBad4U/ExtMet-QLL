@@ -4,7 +4,7 @@
 
 #show: para-lipics.with(
   title: [Internal Quantitative Linear Logic for a Probabilistic Metric Calculus],
-  title-running: [Dummy short title],
+  title-running: [],
   authors: (
     (
       name: [Coltellacci Alessio],
@@ -15,8 +15,8 @@
       ],
     ),
   ),
-  copyright: [Jane Open Access and Joan R. Public],
-  keywords: [Dummy keyword],
+  copyright: [],
+  keywords: [],
 )
 
 #let rule-set(column-gutter: 3em, row-gutter: 2em, ..rules) = {
@@ -322,14 +322,14 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 #let var = prooftree(rule(
   name: [(VAR)],
   $r >= 1$,
-  // ------------------------------------------------
+  // --------------------------
   $Γ, x tcol(r) A, Γ' ⊢ x : A$,
 ))
 
 #let abs = prooftree(rule(
   name: [(ABS)],
   $Γ, x tcol(r) A ⊢ t : B$,
-  // --------------------------
+  // ---------------------------------
   $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
 ))
 
@@ -343,7 +343,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 
 #let unit = prooftree(rule(
   name: [(UNIT)],
-  // --------------------------
+  // ------------
   $Γ ⊢ () : 1$,
 ))
 
@@ -351,7 +351,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   name: [(PAIR)],
   $Γ ⊢ t : A$,
   $Γ ⊢ u : B$,
-  // --------------------------
+  // ----------------------------------------
   $Γ ⊢ chevron.l t, u chevron.r : A times B$,
 ))
 
@@ -376,7 +376,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   $Γ, x tcol(r) A ⊢ u : C$,
   $Γ, y tcol(r) B ⊢ v : C$,
   $r > 0$,
-  // --------------------------
+  // --------------------------------------------------------
   $Γ ⧺ r Γ' ⊢ "case" t "of" ["inj"_1 x => u | "inj"_2 y] : C$,
 ))
 
@@ -384,7 +384,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   name: [($times.o$)],
   $Γ ⊢ t : A$,
   $Γ' ⊢ u : B$,
-  // --------------------------
+  // --------------------------------------------------------
   $r Γ ⧺ s Γ' ⧺ Γ'' ⊢ (t, u) : A attach(⊗, br: s, bl: r) B$,
 ))
 
@@ -392,14 +392,14 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   name: [(LET-$times.o$)],
   $Γ, x tcol(r) A, y tcol(s) B ⊢ t : C$,
   $Γ' ⊢ u : A attach(⊗, br: r, bl: s) B$,
-  // -------------------------------------------------------------------------
+  // -------------------------------------
   $Γ ⧺ Γ' ⊢ "let" (x, y) = t "in" u : C$,
 ))
 
 #let dirac = prooftree(rule(
   name: [($delta$)],
   $Γ ⊢ t : A$,
-  // --------------------------
+  // ----------------------------
   $Γ ⊢ delta space t : cal(W) A$,
 ))
 
@@ -408,7 +408,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   $Γ ⊢ t : cal(W) A$,
   $Γ' ⊢ u : cal(W) A$,
   $p in (0, 1)$,
-  // --------------------------
+  // -----------------------------------------
   $p Γ ⧺ (1-p) Γ' ⊢ t amp.inv_p u : cal(W) A$,
 ))
 
@@ -486,9 +486,9 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   $
   #colbreak()
   $
-                 ⟦ 1 ⟧ & ≜ bold("1") \
-             ⟦ A + B ⟧ & ≜ ⟦ A ⟧ + ⟦ B ⟧ \
-    ⟦ φ multimap_r ψ ⟧ & ≜ r⟦ A ⟧ multimap ⟦ B ⟧ \
+                              ⟦ 1 ⟧ & ≜ bold("1") \
+                          ⟦ A + B ⟧ & ≜ ⟦ A ⟧ + ⟦ B ⟧ \
+    ⟦ φ attach(multimap, br: r) ψ ⟧ & ≜ r⟦ A ⟧ multimap ⟦ B ⟧ \
   $
   #colbreak()
   $
@@ -504,7 +504,7 @@ $
   ⟦ Γ, x attach(:, tr: r) A⟧: ⟦ Γ ⟧ arrow r⟦ A ⟧
 $
 
-We define the structural semantics function:
+We define the semantics for the structural functions:
 
 
 #columns(2)[
@@ -521,7 +521,8 @@ We define the structural semantics function:
 
 = Logic
 
-We now turn the poset $prop$ into the carrier of an _inner logic_. Predicates are terms of type $prop$, and reasoning is carried out by a _graded_ entailment whose grade is the softness $p$. Throughout, $Δ$ ranges over _discrete_ typing contexts (every variable at sensitivity $∞$; we write $Δ, x : A$ for $Δ, x tcol(∞) A$), following Bacci--Møgelberg in keeping term-level sensitivities irrelevant to logical derivability. Softness, by contrast, is tracked on the entailment, exactly as in @def:holder.
+We now turn the poset $prop$ into the carrier of an _internal logic_. Predicates are terms of type $prop$, and reasoning is carried out by a _graded_ entailment whose grade is the softness $p$.
+
 
 $
   prop = (
@@ -534,7 +535,15 @@ $
   )
 $
 
-Here $0 = bot$ (false) and $oo = top$ (true) are the lattice bounds, and $1$ is the multiplicative unit. The multiplicative layer $(times.o, times.o^*, multimap)$ with involution $(-)^*$ (where $a^* = 1 \/ a$) is the $*$-autonomous isomix core $([0, oo], 1, times.o, (-)^*)$, in which $multimap$ is the residual $a multimap b = a^* times.o^* b$. The additives form the _soft families_ $plus.o^s$ (disjunctive, unit $0$) and $plus.o^(-s)$ (conjunctive, unit $oo$), recovering the hard lattice operations $or = plus.o^oo$ and $and = plus.o^(-oo)$ in the limit $s -> oo$; the soft quantifiers $exists^s, forall^s$ are their infinitary ($p$-mean) counterparts. This is the MALL signature with its additives spread into a softness-indexed family, following QLL.
+#definition([The metric on $prop$ is the log metric])[
+  We equip $prop = [0, oo]$ with the _log metric_ $d_prop (a, b) = |log a - log b|$,
+  under which $log : ((0, oo), d_prop) -> (RR, |dot|)$ is an _isometry by construction_ —
+  $d_prop$ is the pullback of the additive metric along $log$, not a Lipschitz consequence
+  of $|a - b|$. The crisp values $0 = bot$ and $oo = top$ lie at infinite distance from every
+  soft value, so $(0, oo) tilde.equiv (RR, |dot|)$ is the unique galaxy carrying metric content
+  and ${0}, {oo}$ are isolated. All sensitivity measured _at_ $prop$ is therefore multiplicative:
+  a map $f : X -> prop$ is $r$-Lipschitz iff $f(x) \/ f(x') <= e^(r dot d_X (x, x'))$.
+] <def:prop-metric>
 
 
 // graded turnstile and soft connectives
@@ -579,7 +588,7 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
   $Γ ⊢ φ : prop$,
   $r in [0, oo]$,
   // ---------------------
-  $r Γ ⧺ Γ' ⊢ r φ : prop$,
+  $r Γ ⊢ r φ : prop$,
 ))
 
 #let prop-dual = prooftree(rule(
@@ -592,35 +601,35 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
 #let prop-sum = prooftree(rule(
   name: [($plus.o^s$)],
   $Γ ⊢ φ : prop$,
-  $Γ' ⊢ ψ : prop$,
+  $Γ ⊢ ψ : prop$,
   $s in [0, oo]$,
   // --------------------------
-  $Γ ⧺ Γ' ⊢ φ psum(s) ψ : prop$,
+  $Γ ⊢ φ and^s ψ : prop$,
 ))
 
 #let prop-hsum = prooftree(rule(
   name: [($plus.o^(-s)$)],
   $Γ ⊢ φ : prop$,
-  $Γ' ⊢ ψ : prop$,
+  $Γ ⊢ ψ : prop$,
   $s in [0, oo]$,
   // --------------------------
-  $Γ ⧺ Γ' ⊢ φ psum(-s) ψ : prop$,
+  $Γ ⊢ φ or^s ψ : prop$,
 ))
 
 #let prop-all = prooftree(rule(
   name: [($forall^s_i$)],
-  $Γ, x tcol(oo) A ⊢ φ : prop$,
+  $Γ, x tcol(s) cal(W) A ⊢ φ : prop$,
   $s in [0, oo]$,
   // --------------------------------
-  $Γ ⊢ fa(s) x : A. space φ : prop$,
+  $Γ ⊢ fa(s) x : cal(W) A. space φ : prop$,
 ))
 
 #let prop-ex = prooftree(rule(
   name: [($exists^s_i$)],
-  $Γ, x tcol(oo) A ⊢ φ : prop$,
+  $Γ, x tcol(s) cal(W) A ⊢ φ : prop$,
   $s in [0, oo]$,
   // -------------------------------
-  $Γ ⊢ ex(s) x : A. space φ : prop$,
+  $Γ ⊢ ex(s) x : cal(W) A. space φ : prop$,
 ))
 
 #align(center, rule-set(
@@ -643,7 +652,7 @@ The tensor connectives are non-expansive out of $prop times.o prop$ (hence the s
 
 #columns(2)[
   $
-          ⟦ ⊤ ⟧ & ≜ ∞ \
+          ⟦ ⊤ ⟧ & ≜ 0 \
     ⟦ t =_A u ⟧ & ≜ d_⟦ A ⟧ ∘ (⟦t⟧ ⊗ ⟦ u ⟧) ∘ "split" \
       ⟦ φ ⊗ ψ ⟧ & ≜ ⊗ ∘ (⟦φ⟧ ⊗ ⟦ψ⟧) ∘ "split" \
     ⟦ φ ⊗^* ψ ⟧ & ≜ ⊗^* ∘ (⟦φ⟧ ⊗ ⟦ψ⟧) ∘ "split" \
@@ -652,13 +661,11 @@ The tensor connectives are non-expansive out of $prop times.o prop$ (hence the s
   $
   #colbreak()
   $
-                ⟦ ⊥ ⟧ & ≜ 0 \
-          ⟦ φ ⊕^p ψ ⟧ & ≜ ⊕^p ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
-       ⟦ φ ⊕^(-p) ψ ⟧ & ≜ ⊕^(-p) ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
-            ⟦ φ ∨ ψ ⟧ & ≜ ⊕^infinity ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
-            ⟦ φ ∧ ψ ⟧ & ≜ ⊕^infinity ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ \
-    ⟦ ∃^p x : A . φ ⟧ & ≜ times.o.big^p_x ∘ "curry"(⟦φ⟧) \
-    ⟦ ∀^p x : A . φ ⟧ & ≜ times.o.big^(-p)_x ∘ "curry"(⟦φ⟧) \
+                ⟦ ⊥ ⟧ & ≜ ∞ \
+          ⟦ φ ∨^s ψ ⟧ & ≜ plus.o^s ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ quad (s = oo : space max = or) \
+          ⟦ φ ∧^s ψ ⟧ & ≜ plus.o^(-s) ∘ ⟨⟦φ⟧, ⟦ψ⟧⟩ quad (s = oo : space min = and) \
+    ⟦ ∃^s x : A . φ ⟧ & ≜ integral^(s)_(x tilde mu_A) ∘ "curry"(⟦φ⟧) \
+    ⟦ ∀^s x : A . φ ⟧ & ≜ integral^(-s)_(x tilde mu_A) ∘ "curry"(⟦φ⟧) \
   $
 ]
 
