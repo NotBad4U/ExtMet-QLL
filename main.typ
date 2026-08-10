@@ -32,7 +32,7 @@
 #let prop = "Prop";
 
 = Preliminaries on extended Reals numbers
-
+Truth, FLTL
 Many QLs are based on intervals of real numbers such as [0,∞], used in QLL.
 Besides standard operations such as multiplication ⊗, we require the notion of comultiplication $times^*$ and p-sums $plus.o^p$, where $p eq.not 0$.
 Comultiplication $a times.o^* b := (a^(−1) times.o b^(−1))^(−1)$ only differs from multiplication for $a= 0$ and $b= infinity$.
@@ -824,71 +824,5 @@ The soft quantifiers are the graded adjoints to reindexing. We give the _adjunct
 #align(center, rule-set(l-allI, l-exE))
 
 = Examples
-
-== Properties of neural networks.
-
-Given a neural network $cal(N): RR^m arrow.r RR^n$, the verification property usually takes the formof a Hoare triple $forall x in RR^. cal(W)(x) arrow.r cal(Q)(x)$, where $cal(W)$ and $cal(Q)$can be arbitrary properties $RR multimap bold(prop)$ obtained by using
-
-#definition([$epsilon$-$delta$-robustness])[
-  Given a neural network $N$ and a vector $v$, consider the specification that requires that for all inputs $x$ that are within $epsilon$ distance from $v$,
-  the output of $cal(N)(x)$ should not deviate by more than $δ$ from $cal(N)(v)$:
-
-  $
-    forall x. |x - v| <= epsilon multimap |cal(N)(x) - cal(N)(v)| <= delta
-  $
-]
-
-It can be used to avoid misclassifying images when only a few pixels are perturbed.
-
-#example("A simple NN")[
-  Consider the input value $x : RR^n$ and the weight and bias vectors: $W_1 : RR^(m times n), b_1 : RR^m, w_2 : RR^m, b_2 : RR$. A first hidden layer:
-  #[
-    #show math.equation.where(block: true): set align(left)
-    $
-      & "features" : RR^n -> RR^m \
-      & "features"(x) = "relu"(W_1 x + b_1)
-    $
-  ]
-
-  #[
-    #show math.equation.where(block: true): set align(left)
-    $
-      & "logit" : RR^m -> RR \
-      & "logit"(h) = w_2^top h + b_2
-    $
-  ]
-
-  #[
-    #show math.equation.where(block: true): set align(left)
-    $
-      & sigma : RR -> II \
-      & sigma(z) = 1 / (1 + e^(-z))
-    $
-  ]
-
-  #[
-    #show math.equation.where(block: true): set align(left)
-    $
-      & "Bernoulli" : II -> cal(G)({0, 1}) \
-      & "Bernoulli"(p) = p dot delta_1 + (1 - p) dot delta_0
-    $
-  ]
-
-  The network factorize has:
-
-  $ RR^n ->^("features") RR^m ->^("logit") RR ->^(sigma) II ->^("Bernoulli") cal(G)({0,1}) $
-
-  #[
-    #show math.equation.where(block: true): set align(left)
-    $
-      & "net" : RR^n -> cal(G)({0, 1}) \
-      & "net"(x) = "Bernoulli"(sigma("logit"("features"(x)))) \
-      & quad quad = "Bernoulli"(sigma(w_2^top "relu"(W_1 x + b_1) + b_2)) \
-      & quad quad = sigma(w_2^top "relu"(W_1 x + b_1) + b_2) dot delta_1 + (1 - sigma(w_2^top "relu"(W_1 x + b_1) + b_2)) dot delta_0
-    $
-  ]
-]
-
-== Properties of neural networks.
 
 #bibliography("refs.bib")
