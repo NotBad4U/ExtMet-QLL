@@ -46,7 +46,7 @@
   ),
 )
 
-== Terms typing ruls
+== Term typing rules
 
 #align(
   center,
@@ -89,7 +89,7 @@
       node((0, 0), $⟦Γ⟧ times.o r⟦A⟧ times.o ⟦Γ'⟧$),
       node((1, 0), $r⟦A⟧$),
       node((2, 0), $⟦A⟧$),
-      edge((0, 0), (1, 0), $"weak"$, "->"),
+      edge((0, 0), (1, 0), $"proj"$, "->"),
       edge((1, 0), (2, 0), $r >= 1$, "->"),
     ),
 
@@ -155,7 +155,7 @@
       node((4, 0), $⟦C⟧$),
       edge((0, 0), (1, 0), $"split"$, "->"),
       edge((1, 0), (2, 0), $"id" times.o r⟦t⟧$, "->"),
-      edge((2, 0), (3, 0), $"dist"$, "->"),
+      edge((2, 0), (3, 0), $delta_(times.o,+)$, "->"),
       edge((3, 0), (4, 0), $[⟦u⟧, ⟦v⟧]$, "->"),
     )),
 
@@ -170,7 +170,7 @@
       edge((1, 0), (2, 0), $r⟦t⟧ times.o s⟦u⟧$, "->"),
     ),
 
-    // (LET-⊗)  Γ ⧺ Γ' ⊢ let (x,y) = t in u : C   (last arrow uses the associator α to reassociate)
+    // (LET-⊗)  Γ ⧺ Γ' ⊢ let (x,y) = u in t : C   (u is the pair, t the body; α reassociates)
     [(LET-$times.o$)],
     diagram(
       spacing: 2.4em,
@@ -179,8 +179,8 @@
       node((2, 0), $⟦Γ⟧ times.o (r⟦A⟧ times.o s⟦B⟧)$),
       node((3, 0), $⟦C⟧$),
       edge((0, 0), (1, 0), $"split"$, "->"),
-      edge((1, 0), (2, 0), $"id" times.o ⟦t⟧$, "->"),
-      edge((2, 0), (3, 0), $⟦u⟧ ∘ alpha$, "->"),
+      edge((1, 0), (2, 0), $"id" times.o ⟦u⟧$, "->"),
+      edge((2, 0), (3, 0), $⟦t⟧ ∘ alpha$, "->"),
     ),
 
     // (δ)  δ t : 𝒲A   (monad unit η = δ)
@@ -222,8 +222,8 @@
       edge((3, 0), (4, 0), $alpha_E$, "->"),
     ),
 
-    // (FIX)  Γ ⊢ fix x.t : A   from (1-r)Γ, x:ʳA ⊢ t : A with r < 1.
-    // ⟦t⟧ is r-contractive in the A-slot, so Banach (within each galaxy) gives the unique fixed point;
+    // (FIX)  Γ ⊢ fix x.t : A   from (1-r)Γ, x:ʳA ⊢ t : A with r < 1 and A Banach (bounded).
+    // On a Banach type ⟦t⟧ is r-contractive in the A-slot, so classical Banach gives the unique fixed point;
     // the triangle IS the fixed-point equation ⟦fix x.t⟧ = ⟦t⟧ ∘ ⟨id, ⟦fix x.t⟧⟩.
     [(FIX)],
     diagram(
@@ -281,8 +281,9 @@ $
   ),
 )
 
-= Logic rule
+= Logic rules
 
+#align(center, rule-set(..logic-rules))
 
 = Examples
 
@@ -338,16 +339,16 @@ The key structural fact is that _composition multiplies sensitivities_. Given $f
 ]
 
 #example("A probabilistic binary classifier")[
-  Write $bold(2) := 1 + 1$ for the Booleans, with $"tt" := "inl" ()$ and $"ff" := "inr" ()$. A stochastic classifier emits a _distribution_ over labels, so it lands in the Wasserstein type $cal(W) bold(2)$:
-  $ "net" := lambda x. space (delta space "tt") amp.inv_(p(x)) (delta space "ff"), quad quad p(x) = sigma("logit"(x)). $
-  Here $delta$ injects a point label as a Dirac measure (rule ($delta$)) and $amp.inv_(p)$ forms the convex combination $p mu + (1 - p) nu$ (rule ($amp.inv_p$)), so $"net"(x)$ is the Bernoulli measure of confidence $p(x)$. Since $cal(W)$ is non-expansive and $amp.inv_p$ is short, the whole term is typed
-  $ emptyctx ⊢ "net" : RR^n attach(multimap, br: r) cal(W) bold(2) $
-  with $r$ the Lipschitz constant of $x |-> p(x)$ — the metric on $cal(W) bold(2)$ being the Kantorovich distance of Wasserstein monad.
+  Two care points shape this example. First, the Booleans must _not_ be taken as the coproduct $1 + 1$: its components sit at distance $oo$ (the $oo$-separated coproduct of *CExtMet*), so any two distinct Bernoulli measures would be at Kantorovich distance $oo$ and no classifier into $cal(W)(1+1)$ could have finite sensitivity. We instead take $bold(2)$ as a _primitive_ two-point object with $d("tt", "ff") = 1$ (any finite constant works, rescaling sensitivities accordingly); then $d_(cal(W) bold(2))("Ber"(p), "Ber"(p')) = |p - p'|$, the total-variation reading. Second, the choice weight in $amp.inv_p$ is a _rule annotation_, so it cannot depend on the input $x$; state-dependent choice enters through a primitive constant
+  $ "bernoulli" : II attach(multimap, br: 1) cal(W) bold(2), quad quad "bernoulli"(p) = p thin delta("tt") + (1 - p) thin delta("ff"), $
+  where $II = [0, 1]$ with the Euclidean metric is a primitive base object ($"bernoulli"$ is non-expansive precisely because $d("tt", "ff") = 1$). The classifier is then the well-typed term
+  $ "net" := lambda x. space "bernoulli" space (sigma space ("logit" space x)), quad quad emptyctx ⊢ "net" : RR^n attach(multimap, br: r) cal(W) bold(2), $
+  with $r = "Lip"(sigma compose "logit") dot 1$ by the composition derivation above — the sensitivity of the confidence map $x |-> p(x)$, as expected.
 ]
 
 == Properties of neural networks
 
-Given a neural network $cal(N) : RR^m -> RR^n$, a verification property usually takes the form of a Hoare triple $forall x. space cal(P)(x) multimap cal(Q)(x)$, where the pre- and post-conditions $cal(P), cal(Q) : RR multimap prop$ are predicates of the inner logic.
+Given a neural network $cal(N) : RR^m -> RR^n$, a verification property usually takes the form of a Hoare triple $forall x. space cal(P)(x) multimap cal(Q)(x)$ (informal shorthand — the formal quantifier carries a grade and reference measure, $fa(s)(x tilde m)$), where the pre-condition $cal(P) : RR^m multimap prop$ and post-condition $cal(Q) : RR^n multimap prop$ are predicates of the inner logic.
 
 #definition([$epsilon$-$delta$-robustness])[
   Given a neural network $N$ and a vector $v$, consider the specification that requires that for all inputs $x$ that are within $epsilon$ distance from $v$,
@@ -358,7 +359,7 @@ Given a neural network $cal(N) : RR^m -> RR^n$, a verification property usually 
   $
 ]
 
-Recall that the inner logic has no Boolean equality: the equality predicate $(t =_A u) = e^(-d_A (t, u))$ takes values in $(0, 1]$, is _true_ ($= 1$) exactly when $t = u$, and degrades smoothly as the points move apart. Under the residuation $times.o ⊣ multimap$ the implication $phi multimap psi$ evaluates to the log-quotient $⟦psi⟧ \/ ⟦phi⟧$, true iff $⟦phi⟧ <= ⟦psi⟧$. Robustness is therefore expressed _natively_ — without a metric threshold — by scaling the hypothesis with the sensitivity:
+Recall that the inner logic has no Boolean equality: the equality predicate $(t =_A u) = e^(-d_A (t, u))$ takes values in $[0, 1]$ — in $(0, 1]$ on bounded types such as $RR^n$, hitting $0$ only at distance $oo$ — is _true_ ($= 1$) exactly when $t = u$, and degrades smoothly as the points move apart. Under the residuation $times.o ⊣ multimap$ the implication $phi multimap psi$ evaluates to the log-quotient $⟦psi⟧ \/ ⟦phi⟧$, true iff $⟦phi⟧ <= ⟦psi⟧$, and predicate scaling is the power map, $⟦r phi⟧ = ⟦phi⟧^r$. Robustness is therefore expressed _natively_ — without a metric threshold — by scaling the hypothesis with the sensitivity:
 
 #definition([Quantitative robustness predicate])[
   For a network $cal(N) : RR^n multimap RR^k$ and a tolerance $r$, the predicate
@@ -368,8 +369,8 @@ Recall that the inner logic has no Boolean equality: the equality predicate $(t 
 
 #proposition([Robustness for free from the sensitivity type])[
   If $emptyctx ⊢ cal(N) : RR^n attach(multimap, br: r) RR^k$ is derivable, then for every $v$ and every reference measure $m$ the worst-case judgement
-  $ v : RR^n thin | thin top ent(oo) fa(oo) (x tilde m). space "Rob"_r (cal(N), v) $
-  holds. _Proof._ The typing makes $⟦cal(N)⟧$ an $r$-Lipschitz map, i.e. $d(cal(N) x, cal(N) v) <= r dot d(x, v)$ pointwise, so each integrand of $"Rob"_r$ is $>= 1$; the hard mean $fa(oo)$ ($= inf_x$) of values $>= 1$ is again $>= 1$. No reasoning about the weights is required — only the index on the arrow. $qed$
+  $ v : RR^n thin | thin dot thin ent(oo) fa(oo) (x tilde m). space "Rob"_r (cal(N), v) $
+  holds — with the _empty_ logical context. (Not with hypothesis $top$: in this multiplicative logic $top = oo$ is the strongest possible hypothesis, forcing the conclusion to be infinite, not a vacuous one; the trivial hypothesis is the unit $bold(1)$, i.e. the empty context.) _Proof._ The typing makes $⟦cal(N)⟧$ an $r$-Lipschitz map, i.e. $d(cal(N) x, cal(N) v) <= r dot d(x, v)$ pointwise, so each integrand of $"Rob"_r$ is $>= 1$; the hard mean $fa(oo)$ (the $m$-essential infimum) of values $>= 1$ is again $>= 1$. No reasoning about the weights is required — only the index on the arrow. $qed$
 ]
 
 #example([Individual fairness $=$ non-expansiveness])[
@@ -379,13 +380,13 @@ Recall that the inner logic has no Boolean equality: the equality predicate $(t 
 ]
 
 #example([Soft / average-case robustness])[
-  Replacing the hard $fa(oo)$ by a soft grade $s in [0, oo)$ over a _data distribution_ $m in cal(W) RR^n$ yields
+  Replacing the hard $fa(oo)$ by a soft grade $s in (0, oo)$ over a _data distribution_ $m in cal(W) RR^n$ yields
   $ "AvgRob"^s_r ::= fa(s) (x tilde m). space "Rob"_r (cal(N), v), $
-  the harmonic $s$-mean $(integral "Rob"_r (cal(N), v)(x)^(-s) dif m(x))^(-1\/s)$. At $s = oo$ this is worst-case robustness over $"supp"(m)$ (the previous proposition); for finite $s$ it tolerates a small mass of violating inputs, graded continuously by $s$ — an _average-case_ certificate that no Boolean specification can express. By (RELAX) a hard certificate entails every softer one, $top ent(oo) "AvgRob"^oo_r$ implies $top ent(s) "AvgRob"^s_r$ for all $s$.
+  the harmonic $s$-mean $(integral "Rob"_r (cal(N), v)(x)^(-s) dif m(x))^(-1\/s)$. At $s = oo$ this is worst-case robustness over $"supp"(m)$ (the previous proposition); for finite $s$ it tolerates a small mass of violating inputs, graded continuously by $s$ — an _average-case_ certificate that no Boolean specification can express. By ($forall$-MONO) — the power-mean inequality, _not_ (RELAX), which only lowers the grade on the turnstile of a fixed sequent — the hard certificate entails every softer one: $"AvgRob"^oo_r ⊢ "AvgRob"^s_r$ for all $s$, so $dot ent(oo) "AvgRob"^oo_r$ gives $dot ent(oo) "AvgRob"^s_r$ by (CUT).
 ]
 
 #example([Probabilistic robustness of the classifier])[
   For the stochastic classifier $"net" : RR^n multimap_r cal(W) bold(2)$, output closeness is measured by the Kantorovich distance, so $"Rob"_r$ instantiates with $=_(cal(W) bold(2))$:
   $ fa(s) (x tilde m). space r(x =_(RR^n) v) multimap (("net" space x) =_(cal(W) bold(2)) ("net" space v)). $
-  Because the Wasserstein functor and $amp.inv_p$ are non-expansive, the sensitivity $r$ on $"net"$ certifies this directly: a perturbation of size $epsilon$ shifts the predicted label distribution by at most $r epsilon$ in Kantorovich distance, i.e. the confidence $p(x)$ moves by at most $r epsilon$.
+  With the primitive $bold(2)$ of finite diameter $1$, the Kantorovich distance on $cal(W) bold(2)$ is $|p - p'|$, so the sensitivity $r$ on $"net"$ certifies this directly: a perturbation of size $epsilon$ shifts the predicted label distribution by at most $r epsilon$ in Kantorovich distance, i.e. the confidence $p(x)$ moves by at most $r epsilon$.
 ]
