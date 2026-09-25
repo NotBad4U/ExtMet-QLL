@@ -15,6 +15,9 @@
 
 #align(center, text(1.4em, weight: "bold")[λ-FQLL cheatsheet])
 
+#metric_space_tb
+
+
 = Syntax
 
 #term-syntax

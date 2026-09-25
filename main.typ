@@ -31,21 +31,54 @@
 
 #let prop = "Prop";
 
+#let tb(..args) = table(
+  inset: 5pt,
+  stroke: 0.4pt + rgb("#cbd5e1"),
+  ..args,
+)
+
 = Preliminaries on extended Reals numbers
-Truth, FLTL
-Many QLs are based on intervals of real numbers such as [0,∞], used in QLL.
-Besides standard operations such as multiplication ⊗, we require the notion of comultiplication $times^*$ and p-sums $plus.o^p$, where $p eq.not 0$.
-Comultiplication $a times.o^* b := (a^(−1) times.o b^(−1))^(−1)$ only differs from multiplication for $a= 0$ and $b= infinity$.
 
-For ML applications, it is desirable to have operations that are differentiable and componentwise strictly increasing.
-These are also referred to as _soft_ operations, in contrast to $max$ and $min$, which are referred to as _hard_ operations.
-Due to being soft, p-sums $a plus.o^p b:= (a^p + b^p)^(1/p)$, originally applied to QLs in Yager logic, have recently gained importance and are used in QLL, for instance.
-A key relation we are currently mechanising is that $plus.o^p$ converges to the binary maximum function as $p -> infinity$.
 
-#notations[p-mean large operator][
-  On the left we have the $p$-sum, and on the right its harmonic dual:
-  $ plus.o.big_(i in I)^p a_i = (plus.o.big_(i in I) a_i^p)^(1/p) quad quad "and" quad quad plus.o.big_(i in I)^(p,*) a_i = (plus.o.big_(i in I) a_i^*)^(1/p)^* $.
-]
+*Truth values* $Omega = [0,oo]$.
+
+#tb(
+  columns: (1fr, auto),
+  table.header([*operations*], [*unit*]),
+  [$a ⊗ b = a b$ #h(1em) ($0 ⊗ oo = 0$)],
+  [$1$],
+  [$a ⊗^* b = a b$ #h(1em) ($0 ⊗^* oo = oo$)],
+  [$1$],
+  [$a^* = 1 slash a$, #h(0.4em) $0^* = oo$],
+  [---],
+  [$a multimap b = sup{c mid(|) a ⊗ c <= b} = a^* ⊗^* b$],
+  [---],
+  [$a ⊕^p b = (a^p + b^p)^(1 slash p)$, #h(0.4em) $a ⊕^(-p) b = (a^(-p) + b^(-p))^(-1 slash p)$],
+  [$0$ / $oo$],
+)
+
+// #rem[
+//   The two corner conventions $0 ⊗ oo = 0$ and $0 ⊗^* oo = oo$ are forced, not ad hoc:
+//   they are exactly what makes $multimap$ the residual of $⊗$ at every boundary
+//   ($a ⊗ b <= c$ iff $b <= a multimap c$, e.g. $0 multimap 0 = oo$ needs
+//   $oo ⊗^* 0 = oo$), what makes $(-)^*$ an involution with dualizing element $1$
+//   (so $(Omega, ⊗, 1, (-)^*)$ is a *Girard quantale* and $⊗^*$ its "par"), and what
+//   makes reflexivity of the graded entailment of @sec:quasitripos exact. Via $-log$,
+//   $(Omega, <=, ⊗, 1)$ is isomorphic to the extended Lawvere quantale
+//   $([-oo,+oo], >=, +, 0)$ @lawvere1973, with $(-)^*$ becoming negation.
+// ]
+
+*Grades* $[0,oo]$.
+
+#tb(
+  columns: (1fr, auto),
+  table.header([*operations*], [*unit*]),
+  [$p ⊕^* q = (p^(-1) + q^(-1))^(-1)$ #h(0.6em) (harmonic sum)],
+  [$oo$],
+  [$p and q$ #h(0.6em) (meet, used by thinning and substitution)],
+  [$oo$],
+)
+
 #definition([Hölder conjugate exponents])[
   Two exponents $p, q in [1, +oo]$ are _Hölder conjugates_ when
   $ 1 / p + 1 / q = 1, $
@@ -89,6 +122,8 @@ We will write $d_X$ instead of $d_infinity^X$ when it is clear from the context 
   - all Cauchy sequences in $(X, d_X)$ converges.
 ]
 
+
+
 #proposition([Closed symmetric monoidal structure on $bold("CExtMet")$])[
   The category *CExtMet* carries a closed symmetric monoidal structure $(bold("CExtMet"), times.o, bold(1))$ given by:
   - Tensor product: For $(X, d_X), (Y, d_Y) in bold("CExtMet")$,
@@ -128,6 +163,33 @@ The operator $X multimap Y$ denotes the set of non-expansive functions from $X$ 
   - $d_(A + B)("inj"_1 a, "inj"_2 b) = oo$.
   The injections are isometries, and any pair of non-expansive maps $A ->^("inl") C$, $B ->^("inr") C$ copairs to a non-expansive $A + B -> C$. The $oo$-separation is _scale-invariant_, $r dot oo = oo$ for every $r > 0$, so the comparison $r(A + B) tilde.equiv r A + r B$ holds for all $r > 0$; it degenerates only at $r = 0$, which would merge the two components.
 ] <def:coproduct>
+
+#let metric_space_tb =  align(center)[
+  #table(
+    columns: 2,
+    align: center + horizon,
+    stroke: (x, y) => (
+      left: if x == 1 { 0.5pt },
+      bottom: if y == 0 { 0.5pt },
+    ),
+    table.header([Space (Carrier)], [$d(a, b)$]),
+    [$RR$], [$|a - b|$],
+    [$NN$], [$cases(0 & "if" a = b, oo & "otherwise")$],
+    [$bold(1)$], [$0$],
+    [$r dot X$ ($X$)], [$r dot d_X (a, b)$],
+    [$X \& Y$ ($X times Y$)], [$max(d_X (a_1, b_1), d_Y (a_2, b_2))$],
+    [$X times.o Y$ ($X times Y$)], [$d_X (a_1, b_1) + d_Y (a_2, b_2)$],
+    [$X + Y$],
+    [$cases(
+      d_X (a, b) & "if" a\, b in X,
+      d_Y (a, b) & "if" a\, b in Y,
+      oo & "otherwise",
+    )$],
+    [$X -> Y$], [$sup_(x in X) d_Y (a(x), b(x))$],
+  )
+]
+
+#metric_space_tb <table:metric-spaces>
 
 = Fixed points of non-expansive maps
 
@@ -223,9 +285,9 @@ Instead, it is part of the tensor type $A attach(times.o, bl: r, br: s) B$ and f
 
 
 
-#remark([Softness lives on the logical entailment, not the typing judgement])[
-  @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a predicate aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$. For this reason softness is tracked as a grade on the entailment of the inner logic, and not on the term-level typing judgement.
-]
+// #remark([Softness lives on the logical entailment, not the typing judgement])[
+//   @def:holder is what lets the $p$-sum connective $plus.o.big^p$ pair soundly against its conjugate $plus.o.big^q$: a predicate aggregated with the $p$-sum may only be contracted against one aggregated with the conjugate $q$-sum, since the pairing is bounded only when $1 / p + 1 / q = 1$. For this reason softness is tracked as a grade on the entailment of the inner logic, and not on the term-level typing judgement.
+// ]
 
 Terms are typed with the judgement:
 
