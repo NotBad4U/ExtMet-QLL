@@ -8,7 +8,7 @@ From mathcomp Require Import pseudometric_structure separation_axioms urysohn.
 From mathcomp Require Import pseudometric_normed_Zmodule normed_module.
 From mathcomp Require Import functions sequences measure lebesgue_integral.
 From mathcomp Require Import measurable_realfun lebesgue_stieltjes_measure exp.
-From mathcomp Require Import hoelder.
+From mathcomp Require Import hoelder kernel probability.
 
 (**md**************************************************************************)
 (* # Additions to MathComp Analysis                                           *)
@@ -29,7 +29,12 @@ From mathcomp Require Import hoelder.
 (*                       metric space); the HB class is ExtMetric            *)
 (*   PseudoMetric_isExtMetric == factory: points at edist 0 are equal       *)
 (*   minkowski2 == Minkowski's inequality for two-term sums (cf. hoelder2)  *)
+(*   eminkowski_ge0 == Minkowski for non-negative extended-real functions   *)
 (*   lp_dist p a b == (a^p + b^p)^(1/p) for p real, max a b for p = +oo     *)
+(*   ret, bind mu f, bindfg f g == the Giry monad for probabilities on      *)
+(*                       probability kernels (from math-comp/analysis#1177) *)
+(*   metricMeasurableType R d == pseudoMetricType R that is also a          *)
+(*                       measurableType d, with a measurable edist           *)
 (*   lp_prod p X Y == X * Y with the l^p combination of the distances,      *)
 (*                       p : {itv \bar R & `[1, +oo[}; p = 1 gives the sum  *)
 (*                       and p = +oo the max                                 *)
@@ -205,10 +210,109 @@ have mf a b : measurable_fun [set: nat] (f2 a b) by [].
 have := minkowski_EFin counting (mf a1 a2) (mf b1 b2) p1.
 have -> : (f2 a1 a2 \+ f2 b1 b2)%R = f2 (a1 + b1) (a2 + b2).
   by apply/funext => -[|[|n]] //=; rw addr0.
-by rw !Lnorm_f2 // -EFinD lee_fin !(@ger0_norm _ (_ + _)) ?addr_ge0 // !ger0_norm.
+rw (Lnorm_f2 (a1 + b1) (a2 + b2) p0) (Lnorm_f2 a1 a2 p0) (Lnorm_f2 b1 b2 p0).
+rw -EFinD lee_fin.
+rw (ger0_norm (addr_ge0 a10 b10)) (ger0_norm (addr_ge0 a20 b20)).
+by rw (ger0_norm a10) (ger0_norm a20) (ger0_norm b10) (ger0_norm b20).
 Qed.
 
 End minkowski2.
+
+Section Lnorm_extras.
+Context d (T : measurableType d) (R : realType) (mu : {measure set T -> \bar R}).
+Local Open Scope ereal_scope.
+
+Import MeasurableR.
+Implicit Types (f g : T -> \bar R).
+
+Let measurable_pow (p : R) f : measurable_fun [set: T] f ->
+  measurable_fun [set: T] (fun x => `|f x| `^ p).
+Proof.
+move=> mf.
+apply: (@measurableT_comp _ _ _ _ _ _ (fun x => x `^ p)) => //=.
+  exact: (measurableT_comp (measurable_poweR _)).
+exact: measurableT_comp.
+Qed.
+
+Lemma Lnorm_ae_eq (p : R) f g :
+  measurable_fun [set: T] f -> measurable_fun [set: T] g ->
+  f = g %[ae mu] -> 'N[mu]_p%:E[f] = 'N[mu]_p%:E[g].
+Proof.
+move=> mf mg fg; rw unlock /=; congr (_ `^ _).
+apply: ge0_ae_eq_integral => //; try exact: measurable_pow.
+- by move=> x _; exact: poweR_ge0.
+- by move=> x _; exact: poweR_ge0.
+- by apply: filterS fg => x /= fxgx _; rw fxgx.
+Qed.
+
+Lemma le_Lnorm (p : R) f g : (0 <= p)%R ->
+  measurable_fun [set: T] f -> measurable_fun [set: T] g ->
+  (forall x, `|f x| <= `|g x|) -> 'N[mu]_p%:E[f] <= 'N[mu]_p%:E[g].
+Proof.
+move=> p0 mf mg fg; rw unlock /=.
+have ge0_in (x : \bar R) : 0 <= x -> x \in `[0, +oo].
+  by move=> x0; rw in_itv /= x0 ?leey.
+apply: gt0_ler_poweR; first by rw invr_ge0.
+- by apply: ge0_in; apply: integral_ge0 => x _; exact: poweR_ge0.
+- by apply: ge0_in; apply: integral_ge0 => x _; exact: poweR_ge0.
+apply: ge0_le_integral => //; try exact: measurable_pow.
+  by move=> x _; exact: poweR_ge0.
+by move=> x _; apply: gt0_ler_poweR => //; apply: ge0_in; exact: abse_ge0.
+Qed.
+
+(* Minkowski's inequality for non-negative extended-real functions. *)
+Lemma eminkowski_ge0 (p : R) f g : (1 <= p)%R ->
+  measurable_fun [set: T] f -> measurable_fun [set: T] g ->
+  (forall x, 0 <= f x) -> (forall x, 0 <= g x) ->
+  'N[mu]_p%:E[f \+ g] <= 'N[mu]_p%:E[f] + 'N[mu]_p%:E[g].
+Proof.
+move=> p1 mf mg f0 g0; have p0 : (0 < p)%R := lt_le_trans ltr01 p1.
+have neNy h : 'N[mu]_p%:E[h] != -oo.
+  by rw gt_eqF // (lt_le_trans ltNy0) // Lnorm_ge0.
+have [Nfy|Nfn] := eqVneq 'N[mu]_p%:E[f] +oo.
+  by rw Nfy addye ?leey.
+have [Ngy|Ngn] := eqVneq 'N[mu]_p%:E[g] +oo.
+  by rw Ngy addey ?leey.
+have fin h : measurable_fun [set: T] h -> (forall x, 0 <= h x) ->
+    'N[mu]_p%:E[h] != +oo -> {ae mu, forall x, h x \is a fin_num}.
+  move=> mh h0 Nh.
+  have hint : mu.-integrable [set: T] (fun x => `|h x| `^ p).
+    apply/integrableP; split; first exact: measurable_pow.
+    rw (eq_integral (fun x => `|h x| `^ p)).
+      by move=> x _; rw gee0_abs // poweR_ge0.
+    apply: (@lty_poweRy _ _ p^-1); first by rw invr_eq0 gt_eqF.
+    by move: Nh; rw unlock /= ltey.
+  apply: filterS (integrable_ae measurableT hint) => x /(_ I) /= hx.
+  have hx' : `|h x| `^ p < +oo by rw -ge0_fin_numE // poweR_ge0.
+  rw ge0_fin_numE // -[h x]gee0_abs //.
+  exact: lty_poweRy (negbT (gt_eqF p0)) hx'.
+pose f' x := fine (f x); pose g' x := fine (g x).
+have mf' : measurable_fun [set: T] f'.
+  exact: measurableT_comp (fine_measurable measurableT) mf.
+have mg' : measurable_fun [set: T] g'.
+  exact: measurableT_comp (fine_measurable measurableT) mg.
+have mEf' : measurable_fun [set: T] (EFin \o f') by exact/measurable_EFinP.
+have mEg' : measurable_fun [set: T] (EFin \o g') by exact/measurable_EFinP.
+have mEfg' : measurable_fun [set: T] (EFin \o (f' \+ g')%R).
+  by apply/measurable_EFinP; exact: measurable_funD.
+have mfg : measurable_fun [set: T] (f \+ g) by exact: emeasurable_funD.
+have ef : f = EFin \o f' %[ae mu].
+  by apply: filterS (fin f mf f0 Nfn) => x fx _; rw /f' /= fineK.
+have eg : g = EFin \o g' %[ae mu].
+  by apply: filterS (fin g mg g0 Ngn) => x gx _; rw /g' /= fineK.
+have efg : f \+ g = EFin \o (f' \+ g')%R %[ae mu].
+  apply: filterS2 ef eg => x /= fx gx _.
+  by rw (fx I) (gx I).
+have -> : 'N[mu]_p%:E[f \+ g] = 'N[mu]_p%:E[EFin \o (f' \+ g')%R].
+  exact: Lnorm_ae_eq mfg mEfg' efg.
+have -> : 'N[mu]_p%:E[f] = 'N[mu]_p%:E[EFin \o f'].
+  exact: Lnorm_ae_eq mf mEf' ef.
+have -> : 'N[mu]_p%:E[g] = 'N[mu]_p%:E[EFin \o g'].
+  exact: Lnorm_ae_eq mg mEg' eg.
+exact: minkowski_EFin.
+Qed.
+
+End Lnorm_extras.
 
 End move_to_hoelder.
 Export move_to_hoelder.
@@ -364,4 +468,164 @@ End lp_prod_metric.
 
 End move_to_lp_product.
 Export move_to_lp_product.
+
+Module move_to_metric_measure.
+(* Upstream: a new file relating pseudometric and measurable structures. *)
+
+(* A measurable structure compatible with an extended pseudometric: the
+   distance is measurable on the product.  This is what integrating
+   distances against couplings or transport plans requires; in particular it
+   holds for the Borel sigma-algebra of a separable space. *)
+HB.mixin Record PseudoMetricMeasurable_isMetricMeasurable (R : realType) d M
+    & PseudoMetric R M & Measurable d M := {
+  measurable_edist : measurable_fun [set: M * M] (fun xy : M * M => edist xy)
+}.
+
+#[short(type="metricMeasurableType")]
+HB.structure Definition MetricMeasurable (R : realType) d :=
+  { M of PseudoMetric R M & Measurable d M
+       & PseudoMetricMeasurable_isMetricMeasurable R d M }.
+
+End move_to_metric_measure.
+Export move_to_metric_measure.
+
+Module move_to_probability.
+(* Ported from math-comp/analysis#1177 "Giry monad for probabilities"
+   (head 40d1b8562a952c31eb42600c7184e73d9b6fa608), targeting
+   theories/probability.v; drop this module once the PR is merged. *)
+
+(* a pker that takes a superfluous arg *)
+Section pker_curry.
+Context d {T : measurableType d} {R : realType}
+        d1 {T1 : measurableType d1}.
+Variable (f : R.-pker T ~> T1).
+
+Definition pker_curry (_ : T) : T -> {measure set T1 -> \bar R} := f.
+
+Let pker_curry_kernel (x : T) U :
+  measurable U -> measurable_fun setT (pker_curry x ^~ U).
+Proof. by move=> mU/=; exact/measurable_kernel. Qed.
+
+HB.instance Definition _ (x : T) :=
+  isKernel.Build _ _ T T1 R (pker_curry x) (pker_curry_kernel x).
+
+Let pker_curryT x : forall x', pker_curry x x' setT = 1%E.
+Proof. by move=> x'; rw /pker_curry prob_kernel. Qed.
+
+HB.instance Definition _ (x : T) :=
+  Kernel_isProbability.Build _ _ _ _ R (pker_curry x) (pker_curryT x).
+
+End pker_curry.
+
+(* a pker that forgets its first arg *)
+Section pker_snd.
+Context d {T : measurableType d} {R : realType}
+        d1 {T1 : measurableType d1}
+        d2 {T2 : measurableType d2}.
+Variable (g : R.-pker T1 ~> T2).
+
+Definition pker_snd : T * T1 -> {measure set T2 -> \bar R} := g \o snd.
+
+Let pker_snd_kernel U : measurable U -> measurable_fun setT (pker_snd ^~ U).
+Proof.
+move=> mU /=.
+apply: (@measurableT_comp _ _ _ _ _ _ (fun x => g x U) _ snd) => //.
+exact/measurable_kernel.
+Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ _ _ R pker_snd pker_snd_kernel.
+
+Let pker_sndT x : pker_snd x setT = 1%E.
+Proof. by rw /pker_snd /= prob_kernel. Qed.
+
+HB.instance Definition _ (x : T) :=
+  Kernel_isProbability.Build _ _ _ _ R pker_snd pker_sndT.
+
+End pker_snd.
+
+Section giry_def.
+Local Open Scope ereal_scope.
+Context d {T : measurableType d} {R : realType} d' {T' : measurableType d'}.
+
+Definition ret : R.-pker T ~> T := kdirac (@measurable_id _ _ setT).
+
+Variables (mu : probability T R) (f : R.-pker T ~> T').
+
+Definition bind :=
+  kcomp (kprobability (measurable_cst (mu : pprobability T R))) (pker_snd f) tt.
+
+Lemma bindE A : bind A = \int[mu]_x f x A. Proof. by []. Qed.
+
+HB.instance Definition _ := Measure.on bind.
+
+Lemma bindT : bind setT = 1%E.
+Proof.
+rw bindE.
+under eq_integral => x _ do rw prob_kernel.
+by rw integral_cst // mul1e; exact: probability_setT.
+Qed.
+
+HB.instance Definition _ :=
+  @Measure_isProbability.Build _ _ _ bind bindT.
+
+End giry_def.
+
+Section giry_prop.
+Local Open Scope ereal_scope.
+Context d {T : measurableType d} {R : realType}
+        d1 {T1 : measurableType d1}
+        d2 {T2 : measurableType d2}.
+
+Lemma giryretf (f : R.-pker T ~> T1) (x : T) A :
+  measurable A -> bind (ret x) f A = f x A.
+Proof.
+move=> ?; rw bindE /ret/= integral_dirac ?diracT ?mul1e//.
+exact: measurable_kernel.
+Qed.
+
+Lemma girymret (mu : probability T R) A :
+  measurable A -> bind mu (@ret _ _ _) A = mu A.
+Proof.
+by move=> ?; rw bindE /ret/kdirac/= integral_indic// setIT.
+Qed.
+
+Variables (mu : probability T R) (f : R.-pker T ~> T1) (g : R.-pker T1 ~> T2).
+
+Definition bindfg : T -> {measure set T2 -> \bar R} :=
+  fun x => ((pker_curry f x) \; pker_snd g) x.
+
+Let bindfg_kernel U : measurable U -> measurable_fun setT (bindfg ^~ U).
+Proof.
+move=> mU.
+apply: (measurable_fun_integral_sfinite_kernel (pker_snd g ^~ U)) => //.
+exact/measurable_kernel.
+Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ _ _ R bindfg bindfg_kernel.
+
+Let bindfgT x : bindfg x setT = 1.
+Proof.
+rw /bindfg /= /kcomp /=.
+under eq_integral do rw prob_kernel.
+by rw integral_cst// mul1e prob_kernel.
+Qed.
+
+HB.instance Definition _ := Kernel_isProbability.Build _ _ _ _ R bindfg bindfgT.
+
+Lemma giryA U : measurable U ->
+  bind (bind mu f) g U = bind mu bindfg U.
+Proof.
+move=> mU.
+rw !bindE.
+have -> : bind mu f = kcomp (cst mu) (pker_snd f) tt by [].
+have -> // := @integral_kcomp _ _ d1  _ T T1 R
+  (kprobability (measurable_cst (mu : pprobability T R)))
+  (pker_snd f) tt (g ^~ U).
+exact/measurable_kernel.
+Qed.
+
+End giry_prop.
+
+End move_to_probability.
+Export move_to_probability.
 
