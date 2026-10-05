@@ -294,6 +294,29 @@ rw [X in _ <= X](_ : _ = (wdir p mu nu + (e / 2)%:E) + (wdir p nu rho + (e / 2)%
 by apply: leeD; exact: ltW.
 Qed.
 
+(* The unit of the monad, x |-> \d_x, is non-expansive. *)
+Lemma wdir_ret p (x y : X) :
+  wdir p (\d_x : probability X R) (\d_y : probability X R) <= edist (x, y).
+Proof.
+have p0 : (p%:num != 0)%R by rw gt_eqF.
+pose k : R.-pker X ~> X := kdirac (@measurable_cst _ _ X X setT y).
+have kp : is_plan \d_x \d_y k.
+  by move=> A mA; rw bindE integral_dirac //= ?diracT ?mul1e.
+apply: (@le_trans _ _ (wcost p \d_x k)).
+  by apply: ereal_inf_lbound; exists k.
+have mx' (x' : X) : measurable_fun [set: X] (fun y' => edist (x', y') `^ p%:num).
+  by apply: mpow; apply: mdist => //; exact: measurable_cst.
+have my : measurable_fun [set: X] (fun x' => edist (x', y) `^ p%:num).
+  by apply: mpow; apply: mdist => //; exact: measurable_cst.
+rw /wcost (eq_integral (fun x' => edist (x', y) `^ p%:num)).
+  by move=> x' _; rw /k /kdirac integral_dirac //= diracT mul1e.
+by rw integral_dirac //= diracT mul1e -poweRrM mulfV // poweRe1.
+Qed.
+
+Lemma wdist_ret p (x y : X) :
+  wdist p (\d_x : probability X R) (\d_y : probability X R) <= edist (x, y).
+Proof. by rw /wdist ge_max wdir_ret /= edist_sym wdir_ret. Qed.
+
 Lemma wdist_triangle p mu nu rho :
   wdist p mu rho <= wdist p mu nu + wdist p nu rho.
 Proof.

@@ -629,3 +629,54 @@ End giry_prop.
 End move_to_probability.
 Export move_to_probability.
 
+(* Standard Borel spaces, aligned with standard_borel_wit of mathcomp-qbs
+   (https://llm4rocq.github.io/mathcomp-qbs/, measure_qbs_adjunction.v):
+   a measurable retraction (sb_encode, sb_decode) onto R. By Kuratowski this
+   is equivalent to Klenke's Borel spaces [Klenke 2014, Def. 8.35]. *)
+Module move_to_standard_borel.
+Import MeasurableR.
+
+HB.mixin Record Measurable_isStandardBorel (R : realType) d T
+    & Measurable d T := {
+  sb_encode : T -> R;
+  sb_decode : R -> T;
+  measurable_sb_encode : measurable_fun [set: T] sb_encode;
+  measurable_sb_decode : measurable_fun [set: R] sb_decode;
+  sb_retractK : cancel sb_encode sb_decode }.
+
+#[short(type="standardBorelType")]
+HB.structure Definition StandardBorel (R : realType) d :=
+  { T of Measurable d T & Measurable_isStandardBorel R d T }.
+
+Arguments sb_encode {R d s}.
+Arguments sb_decode {R d s}.
+
+Section standard_borel_lemmas.
+Context {R : realType} {d} {T : standardBorelType R d}.
+
+Lemma sb_encode_inj : injective (@sb_encode R d T).
+Proof. exact: can_inj sb_retractK. Qed.
+
+Lemma measurable_sb_image (A : set T) : measurable A ->
+  measurable (sb_encode @` A : set R).
+Proof.
+move=> mA.
+have -> : sb_encode @` A =
+    ((fun r => sb_encode (sb_decode r : T)) \- id)%R @^-1` [set 0%R] `&`
+    sb_decode @^-1` A.
+  apply/seteqP; split => [r [t At <-]|r [/= /eqP]].
+    by split => /=; rw sb_retractK // subrr.
+  by rw subr_eq0 => /eqP rE Adr; exists (sb_decode r).
+apply: measurableI.
+  rw -[X in measurable X]setTI; apply: measurable_funB measurableT _ _ => //.
+  exact: measurableT_comp measurable_sb_encode measurable_sb_decode.
+by rw -[X in measurable X]setTI; exact: measurable_sb_decode.
+Qed.
+
+End standard_borel_lemmas.
+
+Arguments measurable_sb_image {R d T} A.
+
+End move_to_standard_borel.
+Export move_to_standard_borel.
+
