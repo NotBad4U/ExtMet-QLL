@@ -4,11 +4,13 @@ From mathcomp Require Import boot order ssralg ssrnum ssrint interval.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import boolp classical_sets reals constructive_ereal ereal.
 From mathcomp Require Import topology_structure uniform_structure.
+From mathcomp Require Import discrete_topology.
 From mathcomp Require Import pseudometric_structure separation_axioms urysohn.
 From mathcomp Require Import pseudometric_normed_Zmodule normed_module.
 From mathcomp Require Import functions sequences measure lebesgue_integral.
 From mathcomp Require Import measurable_realfun lebesgue_stieltjes_measure exp.
-From mathcomp Require Import hoelder kernel probability.
+From mathcomp Require Import hoelder kernel probability bernoulli_distribution.
+From mathcomp Require Import convex.
 
 (**md**************************************************************************)
 (* # Additions to MathComp Analysis                                           *)
@@ -28,6 +30,19 @@ From mathcomp Require Import hoelder kernel probability.
 (*   extMetricType R == pseudoMetricType R that is Hausdorff (extended      *)
 (*                       metric space); the HB class is ExtMetric            *)
 (*   PseudoMetric_isExtMetric == factory: points at edist 0 are equal       *)
+(*   complete_space T == proper Cauchy filters on the uniform space T       *)
+(*                       converge (completeType without a point)           *)
+(*   nbhs_edistP, entourage_edistP, cvg_edistP, cauchy_edistP == the        *)
+(*                       filters of a pseudometric space through edist       *)
+(*   completeExtMetricType R == complete extended metric space; the HB      *)
+(*                       class is CompleteExtMetric                          *)
+(*   discrete_edistE == edist is 0 or +oo on discrete_topology T, which is  *)
+(*                       also given Hausdorff and complete instances         *)
+(*   banach_cvg, banach_fixed, banach_dist_lim == Banach's fixed point      *)
+(*                       theorem on a complete pseudometric space, for a    *)
+(*                       real contraction (w.r.t. edist) and a seed at      *)
+(*                       finite displacement; contraction_edist0 is the     *)
+(*                       uniqueness part                                     *)
 (*   minkowski2 == Minkowski's inequality for two-term sums (cf. hoelder2)  *)
 (*   eminkowski_ge0 == Minkowski for non-negative extended-real functions   *)
 (*   lp_dist p a b == (a^p + b^p)^(1/p) for p real, max a b for p = +oo     *)
@@ -124,8 +139,24 @@ HB.structure Definition Hausdorff :=
 Lemma hausdorffT (T : hausdorffType) : hausdorff_space T.
 Proof. exact: hausdorff_subproof. Qed.
 
+HB.instance Definition _ (T : choiceType) :=
+  Topological_isHausdorff.Build (discrete_topology T) discrete_hausdorff.
+
 End move_to_separation_axioms.
 Export move_to_separation_axioms.
+
+Module move_to_uniform_structure.
+
+(* Completeness of a possibly empty uniform space: Analysis's completeType
+   requires a pointed type, since it states convergence with [lim]. *)
+Definition complete_space (T : uniformType) :=
+  forall F : set_system T, ProperFilter F -> cauchy F -> exists x : T, F --> x.
+
+Lemma completeType_complete (T : completeType) : complete_space T.
+Proof. by move=> F FF /cauchy_cvg /cvg_ex. Qed.
+
+End move_to_uniform_structure.
+Export move_to_uniform_structure.
 
 Module move_to_urysohn.
 
@@ -176,8 +207,219 @@ Lemma edist_eq0 {R : realType} (M : extMetricType R) (x y : M) :
   edist (x, y) = 0 -> x = y.
 Proof. by move=> /edist_closeP; rw closeEnbhs; exact: hausdorffT. Qed.
 
+(* Neighborhoods, entourages, convergence and Cauchy filters in terms of the
+   extended distance. *)
+Section edist_filter.
+Context {R : realType} {M : pseudoMetricType R}.
+Implicit Types (x y z : M) (e : R).
+
+Lemma edist_ball_half x y e : (0 < e)%R -> ball x (e / 2)%R y ->
+  edist (x, y) < e%:E.
+Proof.
+move=> e0 bxy; apply: le_lt_trans (edist_fin (xy := (x, y)) _ bxy) _.
+  by rw divr_gt0.
+by rw lte_fin ltr_pdivrMr // ltr_pMr // ltr1n.
+Qed.
+
+Lemma edist_triangle_half x y z e :
+  edist (x, y) < (e / 2)%R%:E -> edist (y, z) < (e / 2)%R%:E ->
+  edist (x, z) < e%:E.
+Proof.
+move=> xy yz; apply: le_lt_trans (edist_triangle x y z) _.
+by rw [X in _ < X%:E](splitr e) EFinD lteD.
+Qed.
+
+Lemma nbhs_edistP x (P : set M) :
+  nbhs x P <-> exists2 e, (0 < e)%R & [set y | edist (x, y) < e%:E] `<=` P.
+Proof.
+rw -nbhs_ballE; split=> -[e e0 eP].
+  by exists e => // y /edist_lt_ball /eP.
+exists (e / 2)%R; first exact: divr_gt0.
+by move=> y /(edist_ball_half e0) /eP.
+Qed.
+
+Lemma entourage_edistP (A : set (M * M)) :
+  entourage A <-> exists2 e, (0 < e)%R & [set xy | edist xy < e%:E] `<=` A.
+Proof.
+rw -entourage_ballE; split=> -[e e0 eA].
+  by exists e => // xy /edist_lt_ball /eA.
+exists (e / 2)%R; first exact: divr_gt0.
+by move=> [x y] /(edist_ball_half e0) /eA.
+Qed.
+
+Lemma cvg_edistP (F : set_system M) {FF : Filter F} x :
+  F --> x <-> forall e, (0 < e)%R -> \forall y \near F, edist (x, y) < e%:E.
+Proof.
+rw fcvg_ballP; split=> Fx e e0; near=> y.
+  apply: (edist_ball_half e0); near: y; apply: Fx; exact: divr_gt0.
+by apply: (@edist_lt_ball _ _ _ (x, y)); near: y; exact: Fx.
+Unshelve. all: by end_near. Qed.
+
+Lemma cauchy_edistP (F : set_system M) {FF : ProperFilter F} :
+  cauchy F <-> forall e, (0 < e)%R -> exists x, F [set y | edist (x, y) < e%:E].
+Proof.
+rw cauchyP; split=> Fc e e0.
+  have [x Fx] := Fc _ (divr_gt0 e0 (ltr0Sn _ 1)); exists x.
+  by apply: filterS Fx => y; exact: edist_ball_half.
+by have [x Fx] := Fc e e0; exists x; apply: filterS Fx => y /edist_lt_ball.
+Qed.
+
+End edist_filter.
+
+(* Complete extended metric spaces (non-empty, since completeType is
+   pointed). *)
+#[short(type="completeExtMetricType")]
+HB.structure Definition CompleteExtMetric (R : realType) :=
+  { M of CompletePseudoMetric R M & Topological_isHausdorff M }.
+
+(* The discrete pseudometric is the {0, +oo}-valued extended distance. *)
+Lemma discrete_edistE {R : realType} (T : choiceType)
+    (x y : discrete_topology T) :
+  edist (x, y) = (if x == y then 0 else +oo :> \bar R).
+Proof.
+case: eqP => [<-|xy]; first exact: edist_refl.
+by apply/edist_pinftyP => r r0; rw metric_discrete.
+Qed.
+
 End move_to_urysohn.
 Export move_to_urysohn.
+
+Module move_to_discrete_topology.
+(* Upstream, discrete_topology.v provides the discrete uniformity, but not its
+   completeness: a Cauchy filter contains a singleton. *)
+
+Lemma discrete_cauchy_cvg (T : pointedType)
+    (F : set_system (discrete_topology T)) :
+  ProperFilter F -> cauchy F -> cvg F.
+Proof.
+have diag : entourage (range (fun x : discrete_topology T => (x, x))).
+  by rw uniform_discrete.
+move=> FF /(_ _ diag) [[A B] /= [FA FB] AB].
+have [a Aa] := filter_ex FA; apply: (@cvgP _ _ a); apply/discrete_cvg.
+apply: filterS FB => b Bb; have [c _ [ca cb]] := AB (a, b) (conj Aa Bb).
+by move: ca cb => <- <-.
+Qed.
+
+HB.instance Definition _ (T : pointedType) :=
+  Uniform_isComplete.Build (discrete_topology T) (@discrete_cauchy_cvg T).
+
+End move_to_discrete_topology.
+Export move_to_discrete_topology.
+
+Module move_to_sequences.
+(* Banach's fixed point theorem on complete pseudometric spaces, stated with
+   the extended distance edist so that it applies to extended (pseudo)metric
+   spaces: the iteration has to start at finite displacement.  The proof
+   follows Analysis's Section banach_contraction (sequences.v:
+   contraction_dist, contraction_cvg, contraction_cvg_fixed), which only
+   covers complete normed modules. *)
+
+Section banach_pseudometric.
+Context {R : realType} {X : completePseudoMetricType R}.
+Variables (f : X -> X) (q : R).
+Hypotheses (q0 : (0 <= q)%R) (q1 : (q < 1)%R)
+  (fq : forall x y, edist (f x, f y) <= q%:E * edist (x, y)).
+Variable x0 : X.
+Hypothesis x0fin : edist (x0, f x0) < +oo.
+
+Let y n := iter n f x0.
+Let C := (fine (edist (x0, f x0)) / (1 - q))%R.
+
+Let q1_gt0 : (0 < 1 - q)%R. Proof. by rw subr_gt0. Qed.
+
+Let C_ge0 : (0 <= C)%R.
+Proof. by apply: divr_ge0; [exact: fine_ge0 | exact: ltW]. Qed.
+
+Let dist_step n : edist (y n, y n.+1) <= (fine (edist (x0, f x0)) * q ^+ n)%:E.
+Proof.
+elim: n => [|n ih].
+  by rw expr0 mulr1 fineK ?ge0_fin_numE.
+apply: le_trans (fq _ _) _; rw exprS mulrCA EFinM.
+exact: lee_wpmul2l.
+Qed.
+
+Lemma banach_dist n m : edist (y n, y (n + m)) <= (C * q ^+ n)%:E.
+Proof.
+elim: m n => [|m ih] n.
+  by rw addn0 edist_refl lee_fin mulr_ge0 ?exprn_ge0.
+apply: le_trans (edist_triangle _ (y n.+1) _) _.
+rw addnS -addSn; apply: le_trans (leeD (dist_step n) (ih n.+1)) _.
+have CE : (C * (1 - q) = fine (edist (x0, f x0)))%R.
+  by rw divfK // lt0r_neq0.
+by rw -EFinD lee_fin -{1}CE mulrBr mulr1 mulrBl exprS mulrA subrK.
+Qed.
+
+Lemma banach_dist_min n m : edist (y n, y m) <= (C * q ^+ minn n m)%:E.
+Proof.
+wlog nm : n m / (n <= m)%N => [W|].
+  by case/orP: (leq_total n m) => /W //; rw edist_sym minnC.
+by rw (minn_idPl nm) -(subnKC nm); exact: banach_dist.
+Qed.
+
+Lemma banach_cvg : cvgn y.
+Proof.
+apply: cauchy_cvg; apply/cauchy_ballP => e e0.
+have q1' : (`|q| < 1)%R by rw ger0_norm.
+have [N _ HN] :=
+  cvgr0_norm_lt (geometric C q : R^o ^nat) (cvg_geometric C q1') _ e0.
+pose A := [set y n | n in [set n | (N <= n)%N]].
+have yA : (y @ \oo) A by exists N => // n Nn; exists n.
+exists (A, A) => //= -[_ _] [/= [n Nn <-] [m Nm <-]] /=.
+apply: (@edist_lt_ball _ _ e (y n, y m)).
+apply: le_lt_trans (banach_dist_min n m) _.
+have /= := HN (minn n m); rw leq_min Nn Nm => /(_ isT).
+by rw lte_fin ger0_norm; [exact: mulr_ge0 C_ge0 (exprn_ge0 _ q0)|].
+Qed.
+
+Let l := limn y.
+
+Let near_l e : (0 < e)%R ->
+  exists N, forall n, (N <= n)%N -> edist (l, y n) <= e%:E.
+Proof.
+move=> e0; have [N _ HN] := cvg_ball banach_cvg e0.
+by exists N => n /HN ?; apply: edist_fin.
+Qed.
+
+Lemma banach_fixed : edist (l, f l) = 0.
+Proof.
+apply/le_anti; rw edist_ge0 andbT; apply/lee_addgt0Pr => e e0; rw add0e.
+have [N HN] := near_l (divr_gt0 e0 (ltr0n _ 2)).
+apply: le_trans (edist_triangle _ (y N.+1) _) _.
+rw [e]splitr EFinD; apply: leeD; first exact: HN.
+apply: le_trans (fq _ _) _; rw edist_sym.
+apply: le_trans (lee_wpmul2l _ (HN N (leqnn N))) _; first by rw lee_fin.
+by rw -EFinM lee_fin ler_piMl // ?divr_ge0 ?ltW.
+Qed.
+
+Lemma banach_dist_lim : edist (x0, l) <= C%:E.
+Proof.
+apply/lee_addgt0Pr => e e0; have [N HN] := near_l e0.
+apply: le_trans (edist_triangle _ (y N) _) _; apply: leeD.
+  by have := banach_dist 0 N; rw add0n expr0 mulr1.
+by rw edist_sym; exact: HN.
+Qed.
+
+End banach_pseudometric.
+
+Lemma contraction_edist0 {R : realType} {X : pseudoMetricType R} (f : X -> X)
+    (q : R) : (q < 1)%R ->
+    (forall x y, edist (f x, f y) <= q%:E * edist (x, y)) ->
+  forall a b, edist (a, f a) = 0 -> edist (b, f b) = 0 ->
+  edist (a, b) < +oo -> edist (a, b) = 0.
+Proof.
+move=> q1 fq a b ha hb abfin.
+have le : edist (a, b) <= q%:E * edist (a, b).
+  apply: le_trans (edist_triangle _ (f a) _) _; rw ha add0e.
+  apply: le_trans (edist_triangle _ (f b) _) _.
+  by rw [edist (f b, b)]edist_sym hb adde0; exact: fq.
+have fin : edist (a, b) \is a fin_num by rw ge0_fin_numE.
+move: le; rw -(fineK fin) -EFinM lee_fin => le; congr EFin.
+apply/le_anti; rw fine_ge0 // andbT leNgt; apply/negP => ab0.
+by move: le; rw leNgt gtr_pMl // q1.
+Qed.
+
+End move_to_sequences.
+Export move_to_sequences.
 
 Module move_to_hoelder.
 
@@ -327,7 +569,9 @@ Implicit Types (p a b : \bar R).
 Lemma itv_ge1e (p : {itv \bar R & `[1, +oo[}) : 1 <= p%:num.
 Proof. by case: p => x /= /andP[_]; rw /= in_itv /= andbT. Qed.
 
-(* The l^p combination of two extended reals (max for p = +oo). *)
+(* The l^p combination of two extended reals (max for p = +oo).  This is the
+   p-sum of QLLib (cpp-paper-qll, theories/nonneg_ereal.v, p_sum), there on
+   {nonneg \bar R}; to be unified with it. *)
 Definition lp_dist p a b : \bar R :=
   match p with
   | r%:E => (a `^ r + b `^ r) `^ r^-1
@@ -626,8 +870,139 @@ Qed.
 
 End giry_prop.
 
+Section integral_bind.
+Context {R : realType}.
+Local Open Scope ereal_scope.
+
+Lemma integral_bind {d d'} {X : measurableType d} {Y : measurableType d'}
+    (mu : probability X R) (k : R.-pker X ~> Y) (h : Y -> \bar R) :
+  measurable_fun [set: Y] h -> (forall y, 0 <= h y) ->
+  \int[bind mu k]_y h y = \int[mu]_x \int[k x]_y h y.
+Proof.
+move=> mh h0.
+exact: (@integral_kcomp _ _ _ _ _ _ R
+  (kprobability (measurable_cst (mu : pprobability X R))) (pker_snd k) tt h).
+Qed.
+
+End integral_bind.
+
 End move_to_probability.
 Export move_to_probability.
+
+(* Probability measures form a convex space, mixtures being the law of "flip
+   a p-coin, then sample mu or nu" (cf. the convex space of finite
+   distributions in infotheo's convex.v, fdist_convex_space). *)
+Module move_to_convex.
+Local Open Scope convex_scope.
+Local Open Scope ereal_scope.
+
+Section eq_probability.
+Context d (T : measurableType d) (R : realType).
+
+(* cf. eq_measure *)
+Lemma eq_probability (P1 P2 : probability T R) :
+  (P1 = P2 :> (set T -> \bar R)) -> P1 = P2.
+Proof.
+move: P1 P2 => [f [a1 b1 c1 d1 e1 g1 h1]] [f2 [a2 b2 c2 d2 e2 g2 h2]] /= ff2.
+subst f2; move: b2 c2 d2 e2 g2 h2.
+Local Ltac pirr x y := let t := type of x in let H := fresh "H" in
+  assert (H : forall u v : t, u = v)
+    by (intros u v; destruct u; destruct v; f_equal; apply: Prop_irrelevance);
+  rewrite (H y x); clear H.
+pirr a1 a2; move=> b2; pirr b1 b2; move=> c2; pirr c1 c2.
+move=> d2; pirr d1 d2; move=> e2; pirr e1 e2; move=> g2; pirr g1 g2.
+by move=> h2; pirr h1 h2.
+Qed.
+
+End eq_probability.
+
+Section mixture.
+Context {R : realType} {d} {T : measurableType d}.
+Variables (p : {i01 R}) (mu nu : probability T R).
+
+Definition kmix (b : bool) : {measure set T -> \bar R} := if b then mu else nu.
+
+Let measurable_kmix A : measurable A -> measurable_fun [set: bool] (kmix ^~ A).
+Proof. by move=> mA _ Y mY. Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ bool T R kmix measurable_kmix.
+
+Let kmixT b : kmix b setT = 1.
+Proof. by case: b; exact: probability_setT. Qed.
+
+HB.instance Definition _ := Kernel_isProbability.Build _ _ _ _ R kmix kmixT.
+
+Definition pmix := bind (bernoulli_prob p%:num) kmix.
+
+HB.instance Definition _ := Probability.on pmix.
+
+Let p01 : (0 <= p%:num <= 1)%R. Proof. by rw ge0 le1. Qed.
+
+Lemma pmixE A : (pmix : probability T R) A =
+  p%:num%:E * mu A + (1 - p%:num)%R%:E * nu A.
+Proof.
+transitivity (\int[bernoulli_prob p%:num]_b kmix b A); first by [].
+by rw integral_bernoulli_prob.
+Qed.
+
+Lemma integral_pmix (h : T -> \bar R) :
+  measurable_fun [set: T] h -> (forall t, 0 <= h t) ->
+  \int[pmix]_t h t =
+  p%:num%:E * \int[mu]_t h t + (1 - p%:num)%R%:E * \int[nu]_t h t.
+Proof.
+move=> mh h0; rw /pmix integral_bind // integral_bernoulli_prob //.
+by move=> b; apply: integral_ge0 => t _.
+Qed.
+
+End mixture.
+
+Section probability_convex.
+Context {R : realType} {d} {T : measurableType d}.
+
+HB.instance Definition _ := gen_eqMixin (probability T R).
+HB.instance Definition _ := gen_choiceMixin (probability T R).
+
+Let pconv (p : {i01 R}) (mu nu : probability T R) : probability T R :=
+  pmix p mu nu.
+
+Let pconv1 mu nu : pconv 1%R%:i01 mu nu = mu.
+Proof.
+by apply: eq_probability; apply/funext => A; rw pmixE /= subrr mul1e mul0e adde0.
+Qed.
+
+Let pconvmm p mu : pconv p mu mu = mu.
+Proof.
+apply: eq_probability; apply/funext => A; rw pmixE -ge0_muleDl ?lee_fin //.
+by rw -EFinD addrC subrK mul1e.
+Qed.
+
+Let pconvC p mu nu : pconv p mu nu = pconv (1 - p%:num)%R%:i01 nu mu.
+Proof.
+by apply: eq_probability; apply/funext => A; rw !pmixE /= subKr addeC.
+Qed.
+
+Let pconvA : convex_quasi_associative pconv.
+Proof.
+move=> p q r s mu nu rho prs spq; apply: eq_probability; apply/funext => A.
+rw !pmixE ge0_muleDr ?mule_ge0 ?lee_fin // ?subr_ge0 ?le1 //.
+rw [in RHS]ge0_muleDr ?mule_ge0 ?lee_fin // ?subr_ge0 ?le1 //.
+rw !muleA -!EFinM addeA; congr (_ + _ + _).
+- by rw prs mulrC.
+- by rw (ConvexQuasiAssoc.pq_sr prs spq).
+- by move: spq; rw /unstable.onem => <-.
+Qed.
+
+HB.instance Definition _ :=
+  isConvexSpace.Build R (probability T R) pconv1 pconvmm pconvC pconvA.
+
+Lemma probability_convE p (mu nu : probability T R) :
+  mu <| p |> nu = pmix p mu nu.
+Proof. by []. Qed.
+
+End probability_convex.
+
+End move_to_convex.
+Export move_to_convex.
 
 (* Standard Borel spaces, aligned with standard_borel_wit of mathcomp-qbs
    (https://llm4rocq.github.io/mathcomp-qbs/, measure_qbs_adjunction.v):

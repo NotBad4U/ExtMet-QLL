@@ -7,7 +7,8 @@ From mathcomp Require Import constructive_ereal ereal topology_structure.
 From mathcomp Require Import uniform_structure pseudometric_structure urysohn.
 From mathcomp Require Import measure lebesgue_integral measurable_realfun exp.
 From mathcomp Require Import numfun kernel lebesgue_stieltjes_measure hoelder.
-From ExtMetQLL Require Import analysis_extras.
+From mathcomp Require Import bernoulli_distribution convex.
+From ExtMetQLL Require Import analysis_extras extmet disintegration.
 
 (**md**************************************************************************)
 (* # Wasserstein distances                                                    *)
@@ -27,6 +28,11 @@ From ExtMetQLL Require Import analysis_extras.
 (*         wdir p mu nu == infimum of the costs of the plans from mu to nu    *)
 (*        wdist p mu nu == max (wdir p mu nu) (wdir p nu mu)                  *)
 (*                 kid == the identity plan, kdirac of the identity           *)
+(*    is_coupling mu nu pi == pi has marginals mu and nu                      *)
+(*         wass p mu nu == infimum over couplings; = wdir on standard Borel   *)
+(*                         spaces (wassE), by disintegration                  *)
+(*           wspace p X == W_p X, the pseudometric space of probabilities    *)
+(*   pmap mu mf, pmix q mu nu == pushforward, convex combination              *)
 (* ```                                                                        *)
 (* Here p : {itv R & `[1, +oo[} is a real exponent.                          *)
 (******************************************************************************)
@@ -40,20 +46,11 @@ Import Order.TTheory GRing.Theory Num.Theory.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
+Local Open Scope convex_scope.
 
 (* TODO move to analysis_extras.v (move_to_probability) once stable. *)
 Section kernel_extras.
 Context {R : realType}.
-
-Lemma integral_bind {d d'} {X : measurableType d} {Y : measurableType d'}
-    (mu : probability X R) (k : R.-pker X ~> Y) (h : Y -> \bar R) :
-  measurable_fun [set: Y] h -> (forall y, 0 <= h y) ->
-  \int[bind mu k]_y h y = \int[mu]_x \int[k x]_y h y.
-Proof.
-move=> mh h0.
-exact: (@integral_kcomp _ _ _ _ _ _ R
-  (kprobability (measurable_cst (mu : pprobability X R))) (pker_snd k) tt h).
-Qed.
 
 Lemma integral_bindfg {d1 d2 d3} {X : measurableType d1}
     {Y : measurableType d2} {Z : measurableType d3}
@@ -328,3 +325,542 @@ rw /wdist ge_max; apply/andP; split.
 Qed.
 
 End wasserstein.
+
+(* TODO move to analysis_extras.v (move_to_measure_function). *)
+Lemma prob_prod_ext {R : realType} {d1 d2} {X : measurableType d1}
+    {Y : measurableType d2} (m1 m2 : probability (X * Y)%type R) :
+  (forall A B, measurable A -> measurable B -> m1 (A `*` B) = m2 (A `*` B)) ->
+  forall E, measurable E -> m1 E = m2 E.
+Proof.
+move=> m12 E; rw prod_measurable_rectangle => mE.
+apply: (g_sigma_algebra_finite_measure_unique
+  (G := rectangle measurable measurable)) => //.
+- by move=> _ [A mA [B mB] <-]; exact: measurableX.
+- by apply: setI_closed_rectangle => *; exact: measurableI.
+- by rw -setXTT; exact: m12.
+- by move=> _ [A mA [B mB] <-]; exact: m12.
+Qed.
+
+Section pmap.
+Context {R : realType} {d d'} {X : measurableType d} {Y : measurableType d'}.
+
+(* The image of a probability measure under a measurable map, as a bind. *)
+Definition pmap (mu : probability X R) {f : X -> Y}
+    (mf : measurable_fun [set: X] f) := bind mu (kdirac mf).
+
+HB.instance Definition _ mu f (mf : measurable_fun [set: X] f) :=
+  Probability.on (pmap mu mf).
+
+Lemma pmapE mu f (mf : measurable_fun [set: X] f) A : measurable A ->
+  (pmap mu mf : probability Y R) A = mu (f @^-1` A).
+Proof.
+move=> mA; transitivity (\int[mu]_x kdirac mf x A); first by [].
+under eq_integral do rw /kdirac /= diracE.
+rw -[X in mu X]setIT -integral_indic //.
+  by rw -[X in measurable X]setTI; exact: (mf measurableT _ mA).
+Qed.
+
+Lemma integral_pmap mu f (mf : measurable_fun [set: X] f) (h : Y -> \bar R) :
+  measurable_fun [set: Y] h -> (forall y, 0 <= h y) ->
+  \int[pmap mu mf]_y h y = \int[mu]_x h (f x).
+Proof.
+move=> mh h0; rw integral_bind //; apply: eq_integral => x _.
+by rw /kdirac /= integral_dirac //= diracT mul1e.
+Qed.
+
+End pmap.
+
+(* The coupling of a transport plan: the law of (x, y), x ~ mu, y ~ k x. *)
+Notation plan_coupling mu k := (bind mu (kgraph k)).
+
+Section coupling.
+Context {R : realType} {d d'} {X : measurableType d} {Y : measurableType d'}.
+Implicit Types (mu : probability X R) (nu : probability Y R)
+  (k : R.-pker X ~> Y).
+
+Definition is_coupling mu nu (pi : probability (X * Y)%type R) :=
+  (forall A, measurable A -> pi (A `*` setT) = mu A) /\
+  (forall B, measurable B -> pi (setT `*` B) = nu B).
+
+Lemma kgraphE k x (E : set (X * Y)) : measurable E ->
+  kgraph k x E = k x (xsection E x).
+Proof.
+move=> mE; rw xsectionE /kgraph /= /kcomp.
+under eq_integral do rw /kdirac /= diracE.
+rw -[X in k x X]setIT -integral_indic //.
+  by rw -[X in measurable X]setTI; apply: (pair1_measurable x).
+Qed.
+
+Lemma plan_couplingX mu k A B : measurable A -> measurable B ->
+  plan_coupling mu k (A `*` B) = \int[mu]_(x in A) k x B.
+Proof.
+move=> mA mB; rw bindE [RHS]integral_mkcond.
+apply: eq_integral => x _; rw kgraphE ?patchE; first exact: measurableX.
+by case: ifPn => xA; [rw in_xsectionX|rw notin_xsectionX // measure0].
+Qed.
+
+Lemma is_coupling_plan mu nu k : is_plan mu nu k ->
+  is_coupling mu nu (plan_coupling mu k).
+Proof.
+move=> kp; split => [A mA|B mB].
+  transitivity (\int[mu]_(x in A) k x setT); first exact: plan_couplingX.
+  rw (eq_integral (cst 1)) => [x _|]; first by rw prob_kernel.
+  by rw integral_cst // mul1e.
+transitivity (\int[mu]_(x in setT) k x B); first exact: plan_couplingX.
+by rw kp // bindE.
+Qed.
+
+Lemma integral_plan_coupling mu k (h : X * Y -> \bar R) :
+  measurable_fun [set: X * Y] h -> (forall z, 0 <= h z) ->
+  \int[plan_coupling mu k]_z h z = \int[mu]_x \int[k x]_y h (x, y).
+Proof.
+move=> mh h0; rw integral_bind //; apply: eq_integral => x _.
+exact: integral_kgraph.
+Qed.
+
+End coupling.
+
+(* On standard Borel spaces every coupling is the coupling of a plan:
+   disintegrate it along the first coordinate. *)
+Section coupling_plan.
+Context {R : realType} {d dT} {X : measurableType d}
+  {Y : standardBorelType R dT}.
+Variables (mu : probability X R) (nu : probability Y R).
+Variable pi : probability (X * Y)%type R.
+Hypothesis cpi : is_coupling mu nu pi.
+
+Let pmargE A : measurable A -> pmarg pi A = mu A.
+Proof. by move=> mA; rw /pmarg psliceE; exact: cpi.1. Qed.
+
+Let int_marg (A : set X) (h : X -> \bar R) : measurable A ->
+  \int[pmarg pi]_(x in A) h x = \int[mu]_(x in A) h x.
+Proof. by move=> mA; apply: eq_measure_integral => B mB _; exact: pmargE. Qed.
+
+Lemma is_plan_kborel : is_plan mu nu (kborel pi).
+Proof.
+move=> B mB; rw -cpi.2 // disintegration_borel // int_marg //.
+Qed.
+
+Lemma plan_coupling_kborel E : measurable E ->
+  plan_coupling mu (kborel pi) E = pi E.
+Proof.
+apply: prob_prod_ext => A B mA mB.
+transitivity (\int[mu]_(x in A) kborel pi x B); first exact: plan_couplingX.
+by rw disintegration_borel // int_marg.
+Qed.
+
+End coupling_plan.
+
+(* TODO move to analysis_extras.v (move_to_metric_measure). *)
+#[short(type="metricBorelType")]
+HB.structure Definition MetricBorel (R : realType) d :=
+  { M of MetricMeasurable R d M & StandardBorel R d M }.
+
+Section wasserstein_coupling.
+Context {R : realType} {d} {X : metricMeasurableType R d}.
+Implicit Types (p : {itv R & `[1, +oo[}) (mu nu : probability X R)
+  (pi : probability (X * X)%type R).
+
+Definition ccost p pi : \bar R :=
+  (\int[pi]_z edist z `^ p%:num) `^ (p%:num)^-1.
+
+(* The Wasserstein distance: infimum of the costs of the couplings. *)
+Definition wass p mu nu : \bar R :=
+  ereal_inf [set ccost p pi | pi in [set pi | is_coupling mu nu pi]].
+
+Let medist_pow p : measurable_fun [set: X * X] (fun z => edist z `^ p%:num).
+Proof. exact: measurableT_comp (measurable_poweR _) measurable_edist. Qed.
+
+Lemma ccost_ge0 p pi : 0 <= ccost p pi.
+Proof. exact: poweR_ge0. Qed.
+
+Lemma wass_ge0 p mu nu : 0 <= wass p mu nu.
+Proof. by apply: le_ereal_inf_tmp => _ [pi _ <-]; exact: ccost_ge0. Qed.
+
+Lemma ccost_plan p mu (k : R.-pker X ~> X) :
+  ccost p (plan_coupling mu k) = wcost p mu k.
+Proof.
+rw /ccost /wcost integral_plan_coupling //;
+  by [move=> z; exact: poweR_ge0|exact: medist_pow].
+Qed.
+
+Lemma wass_le_wdir p mu nu : wass p mu nu <= wdir p mu nu.
+Proof.
+apply: le_ereal_inf_tmp => _ [k kp <-]; rw -ccost_plan.
+by apply: ereal_inf_lbound; exists (plan_coupling mu k) => //;
+  exact: is_coupling_plan.
+Qed.
+
+Lemma swapX {T1 T2 : Type} (A : set T1) (B : set T2) :
+  (@unstable.swap T1 T2) @^-1` (B `*` A) = A `*` B.
+Proof. by apply/seteqP; split => -[a b] /= [].
+Qed.
+
+Lemma wass_leC p mu nu : wass p mu nu <= wass p nu mu.
+Proof.
+apply: le_ereal_inf_tmp => _ [pi cpi <-].
+pose pi' := pmap pi (@measurable_swap _ _ X X).
+have cpi' : is_coupling mu nu pi'.
+  split => [A mA|B mB].
+  - by rw /pi' pmapE ?swapX; [exact: measurableX|exact: cpi.2].
+  - by rw /pi' pmapE ?swapX; [exact: measurableX|exact: cpi.1].
+apply: (@le_trans _ _ (ccost p pi')); first by apply: ereal_inf_lbound; exists pi'.
+rw /ccost /pi' integral_pmap //;
+  try by [move=> z; exact: poweR_ge0|exact: medist_pow].
+rw (eq_integral (fun z => edist z `^ p%:num)) => [[x y] _|];
+  [by rw /= edist_sym|exact: lexx].
+Qed.
+
+Lemma wassC p : commutative (wass p).
+Proof. by move=> mu nu; apply/le_anti; rw !wass_leC. Qed.
+
+End wasserstein_coupling.
+
+Section wasserstein_borel.
+Context {R : realType} {d} {X : metricBorelType R d}.
+Implicit Types (p : {itv R & `[1, +oo[}) (mu nu rho : probability X R).
+
+Lemma wdir_le_wass p mu nu : wdir p mu nu <= wass p mu nu.
+Proof.
+apply: le_ereal_inf_tmp => _ [pi cpi <-].
+have -> : ccost p pi = wcost p mu (kborel pi).
+  rw -ccost_plan /ccost; congr (_ `^ _).
+  apply: eq_measure_integral => E mE _.
+  exact/esym/(plan_coupling_kborel cpi).
+by apply: ereal_inf_lbound; exists (kborel pi) => //; exact: is_plan_kborel.
+Qed.
+
+(* On standard Borel spaces, plans and couplings give the same distance. *)
+Lemma wassE p mu nu : wass p mu nu = wdir p mu nu.
+Proof. by apply/le_anti; rw wass_le_wdir wdir_le_wass. Qed.
+
+Lemma wdistE p mu nu : wdist p mu nu = wass p mu nu.
+Proof. by rw /wdist -!wassE (wassC p nu) maxxx. Qed.
+
+Lemma wass_refl p mu : wass p mu mu = 0.
+Proof. by rw wassE wdir_refl. Qed.
+
+Lemma wass_triangle p mu nu rho :
+  wass p mu rho <= wass p mu nu + wass p nu rho.
+Proof. by rw !wassE; exact: wdir_triangle. Qed.
+
+Lemma wass_ret p (x y : X) :
+  wass p (\d_x : probability X R) (\d_y : probability X R) <= edist (x, y).
+Proof. by rw wassE; exact: wdir_ret. Qed.
+
+End wasserstein_borel.
+
+(* Functoriality: pushforward along a measurable non-expansive map. *)
+Section wasserstein_pushforward.
+Context {R : realType} {d d'} {X : metricMeasurableType R d}
+  {Y : metricMeasurableType R d'}.
+Variables (f : X -> Y) (mf : measurable_fun [set: X] f).
+Hypothesis f1 : forall x x', edist (f x, f x') <= edist (x, x').
+
+Let ff (z : X * X) : Y * Y := (f z.1, f z.2).
+
+Let mff : measurable_fun [set: X * X] ff.
+Proof.
+by apply: measurable_fun_pair; exact: measurableT_comp mf _.
+Qed.
+
+Lemma wass_pmap p (mu nu : probability X R) :
+  wass p (pmap mu mf) (pmap nu mf) <= wass p mu nu.
+Proof.
+have p0 : (0 <= p%:num)%R by rw ge0.
+apply: le_ereal_inf_tmp => _ [pi cpi <-].
+pose pi' := pmap pi mff.
+have ffX A B : ff @^-1` (A `*` B) = f @^-1` A `*` f @^-1` B by [].
+have mpre (C : set Y) : measurable C -> measurable (f @^-1` C).
+  by move=> mC; rw -[X in measurable X]setTI; apply: mf.
+have cpi' : is_coupling (pmap mu mf) (pmap nu mf) pi'.
+  split => [A mA|B mB].
+  - transitivity (pi (f @^-1` A `*` setT)).
+      by rw /pi' pmapE //; exact: measurableX.
+    by rw cpi.1; [exact: mpre|rw pmapE].
+  - transitivity (pi (setT `*` f @^-1` B)).
+      by rw /pi' pmapE //; exact: measurableX.
+    by rw cpi.2; [exact: mpre|rw pmapE].
+apply: (@le_trans _ _ (ccost p pi')); first by apply: ereal_inf_lbound; exists pi'.
+apply: gt0_ler_poweR; rw ?invr_ge0 ?in_itv /= ?leey ?andbT //;
+  try by apply: integral_ge0 => z _; exact: poweR_ge0.
+rw /pi' integral_pmap //;
+  try by [move=> z; exact: poweR_ge0
+         |exact: measurableT_comp (measurable_poweR _) measurable_edist].
+apply: ge0_le_integral => //;
+  first [by move=> z _; exact: poweR_ge0
+        |exact: measurableT_comp (measurable_poweR _)
+           (measurableT_comp measurable_edist mff)
+        |exact: measurableT_comp (measurable_poweR _) measurable_edist
+        |by move=> [x x'] _; apply: gt0_ler_poweR;
+           rw ?in_itv /= ?leey ?andbT ?edist_ge0 //; exact: f1].
+Qed.
+
+End wasserstein_pushforward.
+
+
+Lemma is_coupling_conv {R : realType} {d d'} {X : measurableType d}
+    {Y : measurableType d'} (q : {i01 R})
+    (mu mu' : probability X R) (nu nu' : probability Y R)
+    (pi pi' : probability (X * Y)%type R) :
+  is_coupling mu nu pi -> is_coupling mu' nu' pi' ->
+  is_coupling (mu <| q |> mu') (nu <| q |> nu') (pi <| q |> pi').
+Proof.
+move=> c c'; split => [A mA|B mB]; rw !probability_convE !pmixE.
+- by rw c.1 // c'.1.
+- by rw c.2 // c'.2.
+Qed.
+
+(* TODO move to analysis_extras.v (move_to_ereal). *)
+Section ereal_inf_add.
+Context {R : realType}.
+Implicit Types (S T : set \bar R) (c x : \bar R).
+
+Lemma le_ereal_inf_addl S c x : 0 <= c -> (forall s, S s -> 0 <= s) ->
+  (forall s, S s -> x <= c + s) -> x <= c + ereal_inf S.
+Proof.
+move=> c0 S0 h; have [->|cy] := eqVneq c +oo.
+  by rw addye ?leey // gt_eqF // (lt_le_trans ltNy0) // le_ereal_inf_tmp.
+have cf : c \is a fin_num by rw ge0_fin_numE // ltey.
+by rw -leeBlDl //; apply: le_ereal_inf_tmp => s Ss; rw leeBlDl // h.
+Qed.
+
+(* Infimum of a sum of independent non-negative terms. *)
+Lemma le_ereal_inf_add S T x :
+  (forall s, S s -> 0 <= s) -> (forall t, T t -> 0 <= t) ->
+  (forall s t, S s -> T t -> x <= s + t) -> x <= ereal_inf S + ereal_inf T.
+Proof.
+move=> S0 T0 h; apply: le_ereal_inf_addl => [|//|t Tt].
+  exact: le_ereal_inf_tmp.
+rw addeC; apply: le_ereal_inf_addl => [|//|s Ss]; first exact: T0.
+by rw addeC; exact: h.
+Qed.
+
+End ereal_inf_add.
+
+Section wasserstein_mix.
+Context {R : realType} {d} {X : metricMeasurableType R d}.
+
+Definition w1 : {itv R & `[1, +oo[} := widen_itv (1%R)%:itv.
+
+Lemma ccost1 (pi : probability (X * X)%type R) :
+  ccost w1 pi = \int[pi]_z edist z.
+Proof.
+rw /ccost /= invr1 poweRe1; first by apply: integral_ge0 => z _; exact: poweR_ge0.
+by apply: eq_integral => z _; rw poweRe1 // edist_ge0.
+Qed.
+
+(* The convex combination is non-expansive p W1 (x) (1 - p) W1 -> W1. *)
+Lemma wass_conv (q : {i01 R}) (mu mu' nu nu' : probability X R) :
+  wass w1 (mu <| q |> mu') (nu <| q |> nu') <=
+  q%:num%:E * wass w1 mu nu + (1 - q%:num)%R%:E * wass w1 mu' nu'.
+Proof.
+have [->|q0] := eqVneq q 0%R%:i01; first by rw !conv0 /= mul0e subr0 mul1e add0e.
+have [->|q1] := eqVneq q 1%R%:i01; first by rw !conv1 /= mul1e subrr mul0e adde0.
+have q0' : (0 < q%:num)%R by rw lt_neqAle eq_sym q0 ge0.
+have q1' : (0 < 1 - q%:num)%R by rw subr_gt0 lt_neqAle q1 le1.
+rw -!ereal_inf_pZl //; apply: le_ereal_inf_add.
+- by move=> _ [_ [pi _ <-] <-]; apply: mule_ge0; [rw lee_fin ltW|exact: ccost_ge0].
+- by move=> _ [_ [pi _ <-] <-]; apply: mule_ge0; [rw lee_fin ltW|exact: ccost_ge0].
+move=> _ _ [_ [pi c <-] <-] [_ [pi' c' <-] <-].
+apply: (@le_trans _ _ (ccost w1 (pi <| q |> pi'))).
+  by apply: ereal_inf_lbound; exists (pi <| q |> pi') => //; exact: is_coupling_conv.
+rw !ccost1 probability_convE integral_pmix //;
+  by [exact: measurable_edist|move=> z; exact: edist_ge0].
+Qed.
+
+End wasserstein_mix.
+
+(* Couplings only see measurable sets, so measures agreeing on them are at
+   distance 0. *)
+Section wass_congr.
+Context {R : realType} {d} {X : metricMeasurableType R d}.
+Implicit Types (p : {itv R & `[1, +oo[}) (mu nu : probability X R).
+
+Lemma wass_congrl p mu mu' nu : (forall A, measurable A -> mu A = mu' A) ->
+  wass p mu nu = wass p mu' nu.
+Proof.
+move=> e; rw /wass; congr ereal_inf; apply/seteqP; split => _ [pi c <-];
+  exists pi => //; split => [A mA|]; rw ?c.1 ?e //; exact: c.2.
+Qed.
+
+End wass_congr.
+
+(* W_p X: the probability measures on X with the Wasserstein distance. *)
+Definition wspace {R : realType} (p : {itv R & `[1, +oo[}) {d}
+  (X : metricBorelType R d) : Type := probability X R.
+
+Section wspace_instances.
+Context {R : realType} (p : {itv R & `[1, +oo[}) {d} {X : metricBorelType R d}.
+
+HB.instance Definition _ := ConvexSpace.copy (wspace p X) (probability X R).
+HB.instance Definition _ := isExtPseudoMetric.Build R (wspace p X)
+  (@wass_ge0 _ _ X p) (@wass_refl _ _ X p) (@wassC _ _ X p)
+  (@wass_triangle _ _ X p).
+
+Lemma wspace_edistE (mu nu : wspace p X) : edist (mu, nu) = wass p mu nu.
+Proof.
+rw (@edistE _ (wspace p X) (wass p)) //; first exact: wass_ge0.
+Qed.
+
+End wspace_instances.
+
+Section wasserstein_space.
+Context {R : realType} (p : {itv R & `[1, +oo[}) {d} {X : metricBorelType R d}.
+
+(* The unit of the monad. *)
+Definition wret (x : X) : wspace p X := \d_x.
+
+Lemma nonexpansive_wret : nonexpansive wret.
+Proof. by apply/nonexpansiveP => x y; rw wspace_edistE; exact: wass_ret. Qed.
+
+(* The action on maps. *)
+Definition wmap {d'} {Y : metricBorelType R d'} (f : X -> Y)
+    (mf : measurable_fun [set: X] f) (mu : wspace p X) : wspace p Y := pmap mu mf.
+
+Lemma nonexpansive_wmap {d'} {Y : metricBorelType R d'} (f : X -> Y)
+    (mf : measurable_fun [set: X] f) :
+  nonexpansive f -> nonexpansive (wmap mf).
+Proof.
+move=> /nonexpansiveP f1; apply/nonexpansiveP => mu nu.
+by rw !wspace_edistE; exact: wass_pmap.
+Qed.
+
+(* Points at distance 0: measures agreeing on measurable sets. *)
+Lemma wspace_edist0 (mu nu : wspace p X) :
+  (forall A, measurable A -> mu A = nu A) -> edist (mu, nu) = 0.
+Proof.
+by move=> e; rw wspace_edistE (wass_congrl _ _ e) wass_refl.
+Qed.
+
+End wasserstein_space.
+
+(* The monad laws hold up to distance 0 (W_p X is a pseudometric space
+   until measures are identified on the measurable sets). *)
+Section wasserstein_monad_laws.
+Context {R : realType} (p : {itv R & `[1, +oo[}) {d1 d2 d3}
+  {X : metricBorelType R d1} {Y : metricBorelType R d2}
+  {Z : metricBorelType R d3}.
+
+(* The left unit law is giryretf: bind (ret x) f and f x agree on
+   measurable sets ([f x] carries no probability instance to state it in
+   W_p). *)
+Lemma wbind_retr (mu : probability X R) :
+  edist ((bind mu (@ret _ _ R) : wspace p X), (mu : wspace p X)) = 0.
+Proof. by apply: wspace_edist0 => A mA; exact: girymret. Qed.
+
+Lemma wbindA (mu : probability X R) (f : R.-pker X ~> Y) (g : R.-pker Y ~> Z) :
+  edist ((bind (bind mu f) g : wspace p Z), (bind mu (bindfg f g) : wspace p Z)) = 0.
+Proof. by apply: wspace_edist0 => A mA; exact: giryA. Qed.
+
+End wasserstein_monad_laws.
+
+(* Interpolative barycentric algebras [Mardare, Panangaden, Plotkin, Free
+   complete Wasserstein algebras, LMCS 2018]: convex spaces whose convex
+   combinations are non-expansive p X (x) (1 - p) X -> X.
+   Interpolative convex algebras over finite distributions, with the
+   Kantorovich lifting, are also formalized in rocq-quantitative-equational-
+   reasoning (src/ICA.v, src/KantorovichProperties.v).
+   TODO: completeness, and generalize to a library of metric convex spaces
+   (cf. infotheo's convex.v, monae's convex monads). *)
+HB.mixin Record PseudoMetricConvex_isIBAlgebra (R : realType) T
+    & ConvexSpace R T & PseudoMetric R T := {
+  edist_conv : forall (p : {i01 R}) (a b a' b' : T),
+    edist (a <| p |> b, a' <| p |> b') <=
+    p%:num%:E * edist (a, a') + (1 - p%:num)%R%:E * edist (b, b') }.
+
+#[short(type="ibAlgebraType")]
+HB.structure Definition IBAlgebra (R : realType) :=
+  { T of ConvexSpace R T & PseudoMetric R T
+       & PseudoMetricConvex_isIBAlgebra R T }.
+
+(* W_1 X is an interpolative barycentric algebra. *)
+Section wspace_ib.
+Context {R : realType} {d} {X : metricBorelType R d}.
+
+Let wspace_edist_conv (p : {i01 R}) (a b a' b' : wspace w1 X) :
+  edist (a <| p |> b, a' <| p |> b') <=
+  p%:num%:E * edist (a, a') + (1 - p%:num)%R%:E * edist (b, b').
+Proof. by rw !wspace_edistE; exact: wass_conv. Qed.
+
+HB.instance Definition _ :=
+  PseudoMetricConvex_isIBAlgebra.Build R (wspace w1 X) wspace_edist_conv.
+
+End wspace_ib.
+
+(* The values of a probability kernel, as probability measures. *)
+Section kval.
+Context {R : realType} {d d'} {T : measurableType d} {X : measurableType d'}.
+Variables (k : R.-pker T ~> X) (t : T).
+
+Definition kval : set X -> \bar R := k t.
+
+HB.instance Definition _ := Measure.on kval.
+Let kvalT : kval setT = 1. Proof. by rw /kval prob_kernel. Qed.
+
+HB.instance Definition _ := Measure_isProbability.Build _ _ _ kval kvalT.
+
+End kval.
+
+(* Binding a probability kernel into couplings. *)
+Section coupling_bind.
+Context {R : realType} {dT d} {T : measurableType dT} {X : measurableType d}.
+Variables (f g : R.-pker T ~> X) (gam : R.-pker T ~> (X * X)%type).
+Hypothesis cgam : forall t, is_coupling (kval f t) (kval g t) (kval gam t).
+
+Lemma is_coupling_bind (mu : probability T R) :
+  is_coupling (bind mu f) (bind mu g) (bind mu gam).
+Proof.
+split => [A mA|B mB].
+- transitivity (\int[mu]_t gam t (A `*` setT)); first by [].
+  by apply: eq_integral => t _; exact: (cgam t).1.
+- transitivity (\int[mu]_t gam t (setT `*` B)); first by [].
+  by apply: eq_integral => t _; exact: (cgam t).2.
+Qed.
+
+End coupling_bind.
+
+(* Bind is non-expansive in the kernel for the sup distance, given a
+   measurable choice of optimal couplings.  Optimal couplings exist on Polish
+   spaces and can be chosen measurably [Villani, Optimal Transport, Thm 4.1
+   and Cor. 5.22]; neither result is available in Analysis. *)
+Section wasserstein_bind.
+Context {R : realType} {dT d} {T : measurableType dT}
+  {X : metricMeasurableType R d}.
+Variables (f g : R.-pker T ~> X).
+
+Definition optimal_selection := exists gam : R.-pker T ~> (X * X)%type,
+  forall t, is_coupling (kval f t) (kval g t) (kval gam t) /\
+    ccost w1 (kval gam t) <= wass w1 (kval f t) (kval g t).
+
+Hypothesis sel : optimal_selection.
+
+Lemma wass_bind (mu : probability T R) :
+  wass w1 (bind mu f) (bind mu g) <=
+  ereal_sup [set wass w1 (kval f t) (kval g t) | t in setT].
+Proof.
+have [gam hgam] := sel; set S := ereal_sup _.
+have [t0 _] : [set: T] !=set0.
+  apply/set0P/negP => /eqP T0; have := probability_setT mu.
+  by rw T0 measure0 => /eqP; rw eq_sym onee_eq0.
+have S0 : 0 <= S.
+  by apply: le_trans (wass_ge0 _ _ _) (ereal_sup_ubound _); exists t0.
+apply: (@le_trans _ _ (ccost w1 (bind mu gam))).
+  apply: ereal_inf_lbound; exists (bind mu gam) => //.
+  by apply: is_coupling_bind => t; exact: (hgam t).1.
+rw ccost1 integral_bind //;
+  try by [exact: measurable_edist|move=> z; exact: edist_ge0].
+apply: (@le_trans _ _ (\int[mu]_t S)).
+  apply: ge0_le_integral => //;
+    first [by move=> t _; apply: integral_ge0 => z _; exact: edist_ge0
+          |by move=> t _; have := (hgam t).2; rw ccost1 => /le_trans; apply;
+             apply: ereal_sup_ubound; exists t
+          |apply: (measurable_fun_integral_sfinite_kernel
+             (fun tz : T * (X * X) => edist tz.2)) => //;
+           by [move=> z; exact: edist_ge0
+              |exact: measurableT_comp measurable_edist measurable_snd]].
+by rw integral_cst // [X in _ * X](@probability_setT _ _ _ mu) mule1.
+Qed.
+
+End wasserstein_bind.
+
