@@ -7,3 +7,5 @@ theories/cextmet.v
 theories/fixpoint.v
 theories/disintegration.v
 theories/wasserstein.v
+theories/syntax.v
+theories/semantics.v
