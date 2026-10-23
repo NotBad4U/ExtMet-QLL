@@ -9,3 +9,4 @@ theories/disintegration.v
 theories/wasserstein.v
 theories/syntax.v
 theories/semantics.v
+theories/QuantLogic.v

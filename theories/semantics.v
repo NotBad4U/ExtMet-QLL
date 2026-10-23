@@ -117,14 +117,14 @@ Lemma nonexpansive_cst (X Y : pseudoMetricType R) (y : Y) :
   nonexpansive (fun _ : X => y).
 Proof. by apply/nonexpansiveP => x x'; rw edist_refl. Qed.
 
-Lemma unit_complete : complete_space (unit : pseudoMetricType R).
+Lemma unit_complete : complete_space (Datatypes.unit : pseudoMetricType R).
 Proof.
 move=> F FF _; exists tt; apply/cvg_edistP => e e0; near=> y.
 by rw unit_edistE lte_fin.
 Unshelve. all: by end_near. Qed.
 
 (* 0 X is indiscrete, hence complete. *)
-Lemma scale_complete_all (r : sens R) (X : pseudoMetricType R) :
+Lemma scale_complete_all (r : Ω R) (X : pseudoMetricType R) :
   complete_space X -> complete_space (scale r X).
 Proof.
 move=> cX; have [r0|r0] := eqVneq r%:num 0; last first.
@@ -161,7 +161,7 @@ Section complete_instances.
 Context {R : realType}.
 
 HB.instance Definition _ :=
-  Uniform_isComplete.Build unit (complete_space_cvg (@unit_complete R)).
+  Uniform_isComplete.Build Datatypes.unit (complete_space_cvg (@unit_complete R)).
 
 Section prod_instances.
 Context (X Y : completePseudoMetricType R).
@@ -184,7 +184,7 @@ HB.instance Definition _ := Uniform_isComplete.Build (coprod X Y)
 End prod_instances.
 
 Section scale_instances.
-Context (r : sens R) (X : completePseudoMetricType R).
+Context (r : Ω R) (X : completePseudoMetricType R).
 
 HB.instance Definition _ := isPointed.Build (scale r X) (point : X).
 HB.instance Definition _ := Uniform_isComplete.Build (scale r X)
@@ -347,7 +347,7 @@ Record wfunctor (R : realType) := WFunctor {
   wdist_triangle : forall (X : pseudoMetricType R) (m m' m'' : WT X),
     wdist X m m'' <= wdist X m m' + wdist X m' m'';
   (* W (r X) = r (W X) *)
-  wdist_scale : forall (r : sens R) (X : pseudoMetricType R) (m m' : WT X),
+  wdist_scale : forall (r : Ω R) (X : pseudoMetricType R) (m m' : WT X),
     wdist (scale r X) m m' = r%:num * wdist X m m'
 }.
 
@@ -401,8 +401,8 @@ Record wmonad (R : realType) := WMonad {
     edist ((wmap _ Y (tensor_snd X Y) m : wsp wfun Y), wmap _ Y (tensor_snd X Y) m') <=
     edist (m, m');
   (* the convex combinations, interpolative barycentric *)
-  wconv : forall T : Type, prob R -> WT wfun T -> WT wfun T -> WT wfun T;
-  wconv_dist : forall (X : pseudoMetricType R) (p : prob R) (a b a' b' : wsp wfun X),
+  wconv : forall T : Type, ]0,1[ R -> WT wfun T -> WT wfun T -> WT wfun T;
+  wconv_dist : forall (X : pseudoMetricType R) (p : ]0,1[ R) (a b a' b' : wsp wfun X),
     edist ((wconv X p a b : wsp wfun X), wconv X p a' b') <=
     p%:num%:E * edist (a, a') + (1 - p%:num)%:E * edist (b, b');
   (* the join *)
@@ -451,8 +451,8 @@ Local Notation dnat := (discrete_topology nat).
 (* ⟦A⟧, an object of CExtMet. *)
 Fixpoint sem_ty (A : ty R) : completePseudoMetricType R :=
   match A with
-  | ty_nat => dnat
-  | ty_unit => unit
+  | ℕ => dnat
+  | unit => Datatypes.unit
   | ty_prod A B => cprod (sem_ty A) (sem_ty B)
   | ty_sum A B => coprod (sem_ty A) (sem_ty B)
   | ty_tensor r A s B => tensor (scale r (sem_ty A)) (scale s (sem_ty B))
@@ -465,7 +465,7 @@ Fixpoint sem_ty (A : ty R) : completePseudoMetricType R :=
    ⟦Γ⟧ ⊗ r_1 ⟦A_1⟧ ⊗ ... (ctx_dist).  The structural maps split, dist and
    weak of the paper are then identities. *)
 Fixpoint ctx_choice (Γ : seq (ty R)) : choiceType :=
-  if Γ is A :: Γ' then (ctx_choice Γ' * sem_ty A)%type else unit.
+  if Γ is A :: Γ' then (ctx_choice Γ' * sem_ty A)%type else Datatypes.unit.
 
 Definition ctxC (Γ : seq (ty R)) (σ : senv R) : Type := ctx_choice Γ.
 
@@ -531,8 +531,8 @@ Qed.
 
 (* The projection on a variable. *)
 Fixpoint ctx_var (Γ : seq (ty R)) (i : nat) :
-    ctx_choice Γ -> sem_ty (nth ty_unit Γ i) :=
-  match Γ, i return ctx_choice Γ -> sem_ty (nth ty_unit Γ i) with
+    ctx_choice Γ -> sem_ty (nth unit Γ i) :=
+  match Γ, i return ctx_choice Γ -> sem_ty (nth unit Γ i) with
   | [::], 0 => fun _ => tt
   | [::], _.+1 => fun _ => tt
   | A :: Γ', 0 => fun γ => γ.2
@@ -569,14 +569,14 @@ Proof. by move=> x0; rw addeC ge0_addey. Qed.
 (* (VAR): the projection, non-expansive since r >= 1. *)
 Lemma sem_var_ne Γ σ i : size σ = size Γ -> (i < size Γ)%N ->
   1 <= (nth sens0 σ i)%:num ->
-  @nonexpansive R (ctxC Γ σ) (sem_ty (nth ty_unit Γ i)) (ctx_var Γ i).
+  @nonexpansive R (ctxC Γ σ) (sem_ty (nth unit Γ i)) (ctx_var Γ i).
 Proof.
 move=> sG iG r1; apply/nonexpansiveP => γ γ'; rw ctx_edistE.
 apply: le_trans _ (@ctx_var_dist Γ σ i γ γ' sG iG).
 by rw -[X in X <= _]mul1e; apply: lee_wpmul2r; [exact: edist_ge0 | exact: r1].
 Qed.
 
-Definition sem_var Γ σ i A (iG : (i < size Γ)%N) (e : nth ty_unit Γ i = A)
+Definition sem_var Γ σ i A (iG : (i < size Γ)%N) (e : nth unit Γ i = A)
     (r1 : 1 <= (nth sens0 σ i)%:num) (sG : size σ = size Γ) :
     ctxC Γ σ -o sem_ty A :=
   eq_rect _ (fun B => ctxC Γ σ -o sem_ty B) (NEMap (sem_var_ne sG iG r1)) _ e.
@@ -620,21 +620,21 @@ Qed.
 
 (* (PAIR), (π_i): the cartesian product. *)
 Lemma sem_pair_ne Γ σ A B (t : ctxC Γ σ -o sem_ty A) (u : ctxC Γ σ -o sem_ty B) :
-  @nonexpansive R (ctxC Γ σ) (sem_ty (A * B)) (fun γ => (t γ, u γ)).
+  @nonexpansive R (ctxC Γ σ) (sem_ty (A × B)) (fun γ => (t γ, u γ)).
 Proof.
 apply/nonexpansiveP => γ γ'; rw cprod_edistE /= ge_max; apply/andP; split.
   exact: nemapP t γ γ'.
 exact: nemapP u γ γ'.
 Qed.
 
-Lemma sem_proj1_ne Γ σ A1 A2 (t : ctxC Γ σ -o sem_ty (A1 * A2)) :
+Lemma sem_proj1_ne Γ σ A1 A2 (t : ctxC Γ σ -o sem_ty (A1 × A2)) :
   @nonexpansive R (ctxC Γ σ) (sem_ty A1) (fun γ => (t γ).1).
 Proof.
 apply/nonexpansiveP => γ γ'; apply: le_trans _ (nemapP t γ γ').
 by rw cprod_edistE le_max lexx.
 Qed.
 
-Lemma sem_proj2_ne Γ σ A1 A2 (t : ctxC Γ σ -o sem_ty (A1 * A2)) :
+Lemma sem_proj2_ne Γ σ A1 A2 (t : ctxC Γ σ -o sem_ty (A1 × A2)) :
   @nonexpansive R (ctxC Γ σ) (sem_ty A2) (fun γ => (t γ).2).
 Proof.
 apply/nonexpansiveP => γ γ'; apply: le_trans _ (nemapP t γ γ').
@@ -723,17 +723,17 @@ Qed.
 
 (* (δ), (⅋_p), (LET): the monad. *)
 Lemma sem_dirac_ne Γ σ A (t : ctxC Γ σ -o sem_ty A) :
-  @nonexpansive R (ctxC Γ σ) (sem_ty (ty_dist A)) (fun γ => wret W (t γ)).
+  @nonexpansive R (ctxC Γ σ) (sem_ty (𝕎 A)) (fun γ => wret W (t γ)).
 Proof.
 apply/nonexpansiveP => γ γ'; apply: le_trans (wret_dist W (t γ) (t γ')) _.
 exact: nemapP t γ γ'.
 Qed.
 
-Lemma sem_choice_ne Γ σ τ A (p : prob R) (t : ctxC Γ σ -o sem_ty (ty_dist A))
-    (u : ctxC Γ τ -o sem_ty (ty_dist A)) :
+Lemma sem_choice_ne Γ σ τ A (p : ]0,1[ R) (t : ctxC Γ σ -o sem_ty (𝕎 A))
+    (u : ctxC Γ τ -o sem_ty (𝕎 A)) :
   size σ = size Γ -> size τ = size Γ ->
-  @nonexpansive R (ctxC Γ (prob_sens p *: σ ⧺ prob_sensC p *: τ))
-    (sem_ty (ty_dist A)) (fun γ => wconv W p (t γ) (u γ)).
+  @nonexpansive R (ctxC Γ (p *: σ ⧺ (1 - p) *: τ))
+    (sem_ty (𝕎 A)) (fun γ => wconv W p (t γ) (u γ)).
 Proof.
 move=> sG tG; apply/nonexpansiveP => γ γ'.
 rw ctx_edistE ctx_dist_add ?size_senv_scale // !ctx_dist_scale //.
@@ -764,7 +764,7 @@ exact: le_trans (nemapP aY (wmap W (cprod_snd X Y) m) (wmap W (cprod_snd X Y) m'
   (wmap_dist W (cprod_snd X Y) m m').
 Qed.
 
-Lemma walg_tensor_ne (X Y : pseudoMetricType R) (r s : sens R)
+Lemma walg_tensor_ne (X Y : pseudoMetricType R) (r s : Ω R)
     (aX : wsp W X -o X) (aY : wsp W Y -o Y) :
   @nonexpansive R (wsp W (tensor (scale r X) (scale s Y)))
     (tensor (scale r X) (scale s Y))
@@ -802,10 +802,10 @@ Qed.
 
 Fixpoint walg (E : ty R) : wsp W (sem_ty E) -o sem_ty E :=
   match E with
-  | ty_nat =>
-    NEMap (@nonexpansive_cst R (wsp W (sem_ty ty_nat)) (sem_ty ty_nat) point)
-  | ty_unit =>
-    NEMap (@nonexpansive_cst R (wsp W (sem_ty ty_unit)) (sem_ty ty_unit) point)
+  | ℕ =>
+    NEMap (@nonexpansive_cst R (wsp W (sem_ty ℕ)) (sem_ty ℕ) point)
+  | unit =>
+    NEMap (@nonexpansive_cst R (wsp W (sem_ty unit)) (sem_ty unit) point)
   | ty_prod A B => NEMap (walg_prod_ne (walg A) (walg B))
   | ty_sum A B =>
     NEMap (@nonexpansive_cst R (wsp W (sem_ty (A + B))) (sem_ty (A + B)) point)
@@ -819,11 +819,11 @@ Fixpoint walg (E : ty R) : wsp W (sem_ty E) -o sem_ty E :=
 (* let x = u in t: the algebra applied to the pushforward of the measure
    ⟦u⟧ γ along the curried ⟦t⟧ γ; the latter is r-Lipschitz, whence rΓ'. *)
 Definition sem_let Γ σ τ A E r (t : ctxC (A :: Γ) (r :: σ) -o sem_ty E)
-    (u : ctxC Γ τ -o sem_ty (ty_dist A)) (γ : ctxC Γ (σ ⧺ r *: τ)) : sem_ty E :=
+    (u : ctxC Γ τ -o sem_ty (𝕎 A)) (γ : ctxC Γ (σ ⧺ r *: τ)) : sem_ty E :=
   walg E (wmap W (sem_abs t γ) (u γ)).
 
 Lemma sem_let_ne Γ σ τ A E r (t : ctxC (A :: Γ) (r :: σ) -o sem_ty E)
-    (u : ctxC Γ τ -o sem_ty (ty_dist A)) :
+    (u : ctxC Γ τ -o sem_ty (𝕎 A)) :
   size σ = size Γ -> size τ = size Γ ->
   @nonexpansive R (ctxC Γ (σ ⧺ r *: τ)) (sem_ty E) (sem_let t u).
 Proof.
@@ -843,24 +843,24 @@ by rw -ctx_edistE; exact: nemapP u γ γ'.
 Qed.
 
 (* (ZERO), (SUCC), (REC): the natural numbers, with the discrete distance. *)
-Lemma sem_succ_ne Γ σ (t : ctxC Γ σ -o sem_ty ty_nat) :
-  @nonexpansive R (ctxC Γ σ) (sem_ty ty_nat) (fun γ => (t γ).+1).
+Lemma sem_succ_ne Γ σ (t : ctxC Γ σ -o sem_ty ℕ) :
+  @nonexpansive R (ctxC Γ σ) (sem_ty ℕ) (fun γ => (t γ).+1).
 Proof.
 apply/nonexpansiveP => γ γ'; apply: le_trans _ (nemapP t γ γ').
 by rw !discrete_edistE eqSS.
 Qed.
 
 Definition sem_natrec Γ σ τ ρ A (z : ctxC Γ σ -o sem_ty A)
-    (st : ctxC (ty_nat :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
-    (n : ctxC Γ ρ -o sem_ty ty_nat) (γ : ctxC Γ (σ ⧺ sensy *: τ ⧺ ρ)) :
+    (st : ctxC (ℕ :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
+    (n : ctxC Γ ρ -o sem_ty ℕ) (γ : ctxC Γ (σ ⧺ sensy *: τ ⧺ ρ)) :
     sem_ty A :=
   natrec_fun (z γ) (fun a k => st ((γ, a), k)) (n γ).
 
 (* The step uses its context with sensitivity +oo and the argument with the
    discrete distance: both are either equal or at distance +oo. *)
 Lemma sem_natrec_ne Γ σ τ ρ A (z : ctxC Γ σ -o sem_ty A)
-    (st : ctxC (ty_nat :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
-    (n : ctxC Γ ρ -o sem_ty ty_nat) :
+    (st : ctxC (ℕ :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
+    (n : ctxC Γ ρ -o sem_ty ℕ) :
   size σ = size Γ -> size τ = size Γ -> size ρ = size Γ ->
   @nonexpansive R (ctxC Γ (σ ⧺ sensy *: τ ⧺ ρ)) (sem_ty A) (sem_natrec z st n).
 Proof.
@@ -926,7 +926,7 @@ Fixpoint sem Γ σ t A (d : Γ ⊢[ σ ] t : A) : ctxC Γ σ -o sem_ty A :=
   | typed_app Γ σ τ t u A B r d1 d2 =>
     NEMap (sem_app_ne (sem d1) (sem d2) (typed_size d1) (typed_size d2))
   | typed_unit Γ σ _ =>
-    NEMap (@nonexpansive_cst R (ctxC Γ σ) (sem_ty ty_unit) tt)
+    NEMap (@nonexpansive_cst R (ctxC Γ σ) (sem_ty unit) tt)
   | typed_pair Γ σ t u A B d1 d2 => NEMap (sem_pair_ne (sem d1) (sem d2))
   | typed_proj1 Γ σ t A1 A2 d => NEMap (sem_proj1_ne (sem d))
   | typed_proj2 Γ σ t A1 A2 d => NEMap (sem_proj2_ne (sem d))
@@ -948,7 +948,7 @@ Fixpoint sem Γ σ t A (d : Γ ⊢[ σ ] t : A) : ctxC Γ σ -o sem_ty A :=
   | typed_let Γ σ τ t u A E r d1 d2 _ _ =>
     NEMap (sem_let_ne (sem d1) (sem d2) (typed_size_cons d1) (typed_size d2))
   | typed_zero Γ σ _ =>
-    NEMap (@nonexpansive_cst R (ctxC Γ σ) (sem_ty ty_nat) O)
+    NEMap (@nonexpansive_cst R (ctxC Γ σ) (sem_ty ℕ) O)
   | typed_succ Γ σ t d => NEMap (sem_succ_ne (sem d))
   | typed_natrec Γ σ τ ρ z st n A d1 d2 d3 =>
     NEMap (sem_natrec_ne (sem d1) (sem d2) (sem d3) (typed_size d1)
@@ -972,7 +972,7 @@ Lemma sem_appE Γ σ τ t u A B r (d1 : Γ ⊢[ σ ] t : A ⊸[r] B)
 Proof. by []. Qed.
 
 Lemma sem_letE Γ σ τ t u A E r (d1 : A :: Γ ⊢[ r :: σ ] t : E)
-    (d2 : Γ ⊢[ τ ] u : ty_dist A) (ibE : ib_ty E) (rfin : r%:num < +oo) γ :
+    (d2 : Γ ⊢[ τ ] u : 𝕎 A) (ibE : ib_ty E) (rfin : r%:num < +oo) γ :
   sem (typed_let d1 d2 ibE rfin) γ = walg E (wmap W (sem_abs (sem d1) γ) (sem d2 γ)).
 Proof. by []. Qed.
 

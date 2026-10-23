@@ -25,21 +25,23 @@ From ExtMetQLL Require Import analysis_extras.
 (* Wasserstein space (wasserstein.v).                                         *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*            sens R == sensitivities r in [0, +oo], i.e. {nonneg \bar R};   *)
+(*            Ω R == sensitivities r in [0, +oo], i.e. {nonneg \bar R};   *)
 (*                      sens0, sens1, sensy are 0, 1, +oo and                 *)
 (*                      sens_add, sens_mul the sum and product (0 * oo = 0)   *)
-(*            prob R == probabilities p in ]0, 1[, i.e. {itv R & `]0, 1[}    *)
+(*   ℙ_convex R, ]0,1[ R == probabilities p in ]0, 1[, {itv R & `]0, 1[} *)
 (*           contr R == contraction factors r in [0, 1[,                      *)
 (*                      i.e. {itv \bar R & `[0, 1[}                            *)
-(*   prob_sens p, prob_sensC p == p and 1 - p as sensitivities                *)
+(*   prob_sens p, prob_sensC p == p (a coercion) and 1 - p as sensitivities,  *)
+(*                      with sens_sub the truncated difference (omega_scope) *)
 (*   contr_sens r, contr_sensC r == r and 1 - r as sensitivities              *)
-(*              ty R == types A, B ::= ty_nat | ty_unit | A * B | A + B       *)
-(*                      | A ⊗[ r , s ] B | A ⊸[ r ] B | ty_dist A              *)
+(*              ty R == types A, B ::= ℕ | unit | A × B | A + B               *)
+(*                      | A ⊗[ r , s ] B | A ⊸[ r ] B | 𝕎 A                   *)
 (*                      (notations in ty_scope, delimiter %ty);              *)
 (*                      A ⊗[ r , s ] B is rA ⊗ sB and A ⊸[ r ] B is rA ⊸ B     *)
 (*           ib_ty E == E denotes an interpolative barycentric algebra       *)
-(*              tm R == terms, with de Bruijn indices                         *)
-(*            senv R == sensitivity environments σ : seq (sens R)             *)
+(*              tm R == terms, with de Bruijn indices (notations in          *)
+(*                      tm_scope, delimiter %tm)                              *)
+(*            senv R == sensitivity environments σ : seq (Ω R)             *)
 (*     σ ⧺ τ, r *: σ == the sum and the scaling of contexts (senv_scope)      *)
 (*   Γ ⊢[ σ ] t : A == the typing judgement typed Γ σ t A                      *)
 (* ```                                                                        *)
@@ -70,31 +72,37 @@ Section scalars.
 Context {R : realType}.
 
 (* Sensitivities r in [0, +oo], the scalars of the scaling functor. *)
-Definition sens : Type := {nonneg \bar R}.
+Definition Ω : Type := {nonneg \bar R}.
 
 (* Probabilities p in ]0, 1[, the parameters of the convex combinations. *)
-Definition prob : Type := {itv R & `]0, 1[}.
+Definition ℙ_convex : Type := {itv R & `]0, 1[}.
 
 (* Contraction factors r in [0, 1[, the parameters of the guarded fixed
    points. *)
 Definition contr : Type := {itv \bar R & `[0, 1[}.
 
-Definition sens0 : sens := (0%R%:E)%:nng.
-Definition sens1 : sens := 1%:E%:nng.
-Definition sensy : sens := (+oo : \bar R)%:nng.
+Definition sens0 : Ω := (0%R%:E)%:nng.
+Definition sens1 : Ω := 1%:E%:nng.
+Definition sensy : Ω := (+oo : \bar R)%:nng.
 
 (* The sum and the product of sensitivities, with 0 * +oo = 0 (the
    convention of scale).  They are written with adde and oppe below because
    interval inference does not see through the generic + and - of
    ereal_scope. *)
-Definition sens_add (r s : sens) : sens := (adde r%:num s%:num)%:nng.
-Definition sens_mul (r s : sens) : sens := (r%:num * s%:num)%:nng.
+Definition sens_add (r s : Ω) : Ω := (adde r%:num s%:num)%:nng.
+Definition sens_mul (r s : Ω) : Ω := (r%:num * s%:num)%:nng.
 
-Definition prob_sens (p : prob) : sens := (p%:num%:E)%:nng.
-Definition prob_sensC (p : prob) : sens := ((1 - p%:num)%:E)%:nng.
+(* The truncated difference max (r - s) 0, written r - s in omega_scope. *)
+Definition sens_sub (r s : Ω) : Ω :=
+  (maxe (adde r%:num (oppe s%:num)) (0%R%:E))%:nng.
 
-Definition contr_sens (r : contr) : sens := (r%:num)%:nng.
-Definition contr_sensC (r : contr) : sens := (adde 1 (oppe r%:num))%:nng.
+(* A probability is a sensitivity (a coercion), and 1 - p its complement. *)
+Definition prob_sens (p : ℙ_convex) : Ω := (p%:num%:E)%:nng.
+Coercion prob_sens : ℙ_convex >-> Ω.
+Definition prob_sensC (p : ℙ_convex) : Ω := sens_sub sens1 (prob_sens p).
+
+Definition contr_sens (r : contr) : Ω := (r%:num)%:nng.
+Definition contr_sensC (r : contr) : Ω := (adde 1 (oppe r%:num))%:nng.
 
 Lemma sens0E : sens0%:num = 0. Proof. by []. Qed.
 Lemma sens1E : sens1%:num = 1. Proof. by []. Qed.
@@ -102,9 +110,15 @@ Lemma sensyE : sensy%:num = +oo. Proof. by []. Qed.
 
 Lemma sens_addE r s : (sens_add r s)%:num = r%:num + s%:num. Proof. by []. Qed.
 Lemma sens_mulE r s : (sens_mul r s)%:num = r%:num * s%:num. Proof. by []. Qed.
+Lemma sens_subE r s : (sens_sub r s)%:num = maxe (r%:num - s%:num) 0.
+Proof. by []. Qed.
 
 Lemma prob_sensE p : (prob_sens p)%:num = p%:num%:E. Proof. by []. Qed.
-Lemma prob_sensCE p : (prob_sensC p)%:num = (1 - p%:num)%:E. Proof. by []. Qed.
+Lemma prob_sensCE p : (prob_sensC p)%:num = (1 - p%:num)%:E.
+Proof.
+have p1 : (p%:num <= 1)%R by exact/ltW/lt1.
+by rw sens_subE sens1E prob_sensE -EFinB max_l // lee_fin subr_ge0.
+Qed.
 
 Lemma contr_sensE r : (contr_sens r)%:num = r%:num. Proof. by []. Qed.
 Lemma contr_sensCE r : (contr_sensC r)%:num = 1 - r%:num. Proof. by []. Qed.
@@ -120,9 +134,24 @@ Proof. by rw contr_sensE; case: r => x /= /andP[_]; rw /= in_itv /= => /andP[]. 
 
 End scalars.
 
-Arguments sens : clear implicits.
-Arguments prob : clear implicits.
+Arguments Ω : clear implicits.
+Arguments ℙ_convex : clear implicits.
 Arguments contr : clear implicits.
+
+(* 1 and the truncated difference on sensitivities, so that the rule (⅋ₚ)
+   reads p *: σ ⧺ (1 - p) *: τ. *)
+Declare Scope omega_scope.
+Delimit Scope omega_scope with Ω.
+Bind Scope omega_scope with Ω.
+
+Notation "1" := sens1 : omega_scope.
+Notation "r - s" := (sens_sub r s) : omega_scope.
+
+(* The probabilities written as the open interval: ]0,1[ R (one token;
+   MathComp's `]0, 1[ is the interval itself, and a keyword 1[ would break
+   its `[0, 1[). *)
+Notation "]0,1[ R" := (ℙ_convex R) (at level 0, R at level 0,
+  format "]0,1[  R") : type_scope.
 
 (** * Types, terms and contexts *)
 
@@ -133,12 +162,12 @@ Context {R : realType}.
    tensor and the function types, ty_tensor r A s B = rA ⊗ sB and
    ty_lolli r A B = rA ⊸ B. *)
 Inductive ty : Type :=
-| ty_nat                                  (* N *)
-| ty_unit                                 (* 1 *)
+| ℕ                                       (* N *)
+| unit                                    (* 1 *)
 | ty_prod of ty & ty                      (* A × B, the cartesian product *)
 | ty_sum of ty & ty                       (* A + B *)
-| ty_tensor of sens R & ty & sens R & ty  (* A ⊗[r, s] B = rA ⊗ sB *)
-| ty_lolli of sens R & ty & ty            (* A ⊸[r] B = rA ⊸ B *)
+| ty_tensor of Ω R & ty & Ω R & ty  (* A ⊗[r, s] B = rA ⊗ sB *)
+| ty_lolli of Ω R & ty & ty            (* A ⊸[r] B = rA ⊸ B *)
 | ty_dist of ty.                          (* W A *)
 
 (* The types whose denotation is an interpolative barycentric algebra, the
@@ -148,8 +177,8 @@ Inductive ty : Type :=
    points of N or of different summands being at distance +oo. *)
 Fixpoint ib_ty (E : ty) : bool :=
   match E with
-  | ty_nat | ty_sum _ _ => false
-  | ty_unit | ty_dist _ => true
+  | ℕ | ty_sum _ _ => false
+  | unit | ty_dist _ => true
   | ty_prod A B | ty_tensor _ A _ B => ib_ty A && ib_ty B
   | ty_lolli _ _ B => ib_ty B
   end.
@@ -171,23 +200,22 @@ Inductive tm : Type :=
 | tm_tensor of tm & tm          (* (t, u) *)
 | tm_lettensor of tm & tm       (* let (x, y) = u in t *)
 | tm_dirac of tm                (* δ t *)
-| tm_choice of prob R & tm & tm (* t ⅋_p u *)
+| tm_choice of ]0,1[ R & tm & tm (* t ⅋_p u *)
 | tm_let of tm & tm             (* let x = u in t *)
 | tm_zero                       (* zero *)
-| tm_succ of tm                 (* succ t *)
-| tm_natrec of tm & tm & tm     (* rec (z, (x, y). s, n); tm_rec is the
-                                   recursion principle of tm *)
+| succ of tm                 (* succ t *)
+| rec of tm & tm & tm           (* rec (z, (x, y). s, n) *)
 | tm_fix of tm.                 (* fix x. t *)
 
 (* Sensitivity environments: the sensitivities of a context, last binding
    first. *)
-Definition senv : Type := seq (sens R).
+Definition senv : Type := seq (Ω R).
 
 (* The sum Γ ⧺ Γ' and the scaling rΓ of contexts over the same variables. *)
 Definition senv_add (σ τ : senv) : senv :=
   [seq sens_add p.1 p.2 | p <- zip σ τ].
 
-Definition senv_scale (r : sens R) (σ : senv) : senv :=
+Definition senv_scale (r : Ω R) (σ : senv) : senv :=
   [seq sens_mul r s | s <- σ].
 
 End syntax.
@@ -200,10 +228,43 @@ Declare Scope ty_scope.
 Delimit Scope ty_scope with ty.
 Bind Scope ty_scope with ty.
 
-Notation "A * B" := (ty_prod A B) : ty_scope.
+Notation "A × B" := (ty_prod A B) (at level 40, left associativity) : ty_scope.
 Notation "A + B" := (ty_sum A B) : ty_scope.
 Notation "A ⊗[ r , s ] B" := (ty_tensor r A s B) : ty_scope.
 Notation "A ⊸[ r ] B" := (ty_lolli r A B) : ty_scope.
+Notation "'𝕎' A" := (ty_dist A) (at level 10, format "𝕎  A") : ty_scope.
+
+Declare Scope tm_scope.
+Delimit Scope tm_scope with tm.
+Bind Scope tm_scope with tm.
+
+Notation "'#' i" := (tm_var i%N) (at level 0, i at level 0, format "# i")
+  : tm_scope.
+Notation "'λ' t" := (tm_abs t) (at level 35, right associativity, format "λ  t")
+  : tm_scope.
+Notation "t @ u" := (tm_app t u) (at level 60, format "t  @  u")
+  : tm_scope.
+Notation "⟨ t , u ⟩" := (tm_pair t u) (format "⟨ t ,  u ⟩") : tm_scope.
+Notation "'π1' t" := (tm_proj1 t) (at level 35, right associativity, format "π1  t")
+  : tm_scope.
+Notation "'π2' t" := (tm_proj2 t) (at level 35, right associativity, format "π2  t")
+  : tm_scope.
+Notation "'ι1' t" := (tm_inj1 t) (at level 35, right associativity, format "ι1  t")
+  : tm_scope.
+Notation "'ι2' t" := (tm_inj2 t) (at level 35, right associativity, format "ι2  t")
+  : tm_scope.
+Notation "t ⊗ u" := (tm_tensor t u) (at level 40, left associativity)
+  : tm_scope.
+Notation "'δ' t" := (tm_dirac t) (at level 35, right associativity, format "δ  t")
+  : tm_scope.
+Notation "t ⅋[ p ] u" := (tm_choice p t u)
+  (at level 50, left associativity, format "t  ⅋[ p ]  u") : tm_scope.
+Notation "'μ' t" := (tm_fix t) (at level 35, right associativity, format "μ  t")
+  : tm_scope.
+(* let (x, y) = u in t, without names: the pair is bound to #1 and #0. *)
+Notation "'let' ( , ) := u 'in' t" := (tm_lettensor u t)
+  (at level 10, u at level 200, t at level 200,
+   format "'let'  ( , )  :=  u  'in'  t") : tm_scope.
 
 Declare Scope senv_scope.
 Delimit Scope senv_scope with senv.
@@ -216,19 +277,27 @@ Local Open Scope senv_scope.
 
 Section senv_theory.
 Context {R : realType}.
-Implicit Types (r s : sens R) (σ τ : senv R).
+Implicit Types (r s : Ω R) (σ τ : senv R).
 
-(* The defining equations of the paper. *)
+(* The defining equations of the paper (Definition "context scaling
+   operations"), the contexts being over the same variables. *)
+
+(*   ⟨⟩ ⧺ ⟨⟩ ≡ ⟨⟩ *)
 Lemma senv_add_nil : [::] ⧺ [::] = [::] :> senv R. Proof. by []. Qed.
 
+(*   r ⟨⟩ ≡ ⟨⟩ *)
 Lemma senv_scale_nil r : r *: [::] = [::] :> senv R. Proof. by []. Qed.
 
+(*   (Γ, x :^r A) ⧺ (Γ', x :^s A) ≡ Γ ⧺ Γ', x :^(r + s) A *)
 Lemma senv_add_cons r s σ τ : (r :: σ) ⧺ (s :: τ) = sens_add r s :: σ ⧺ τ.
 Proof. by []. Qed.
 
+(*   r (Γ, x :^s A) ≡ r Γ, x :^(r · s) A *)
 Lemma senv_scale_cons r s σ : r *: (s :: σ) = sens_mul r s :: r *: σ.
 Proof. by []. Qed.
 
+(* Γ ⧺ Γ' is only defined on contexts over the same variables: the sum is
+   truncated to the shorter environment, and scaling preserves the length. *)
 Lemma size_senv_add σ τ : size (σ ⧺ τ) = minn (size σ) (size τ).
 Proof. by rw size_map size_zip. Qed.
 
@@ -253,7 +322,7 @@ End senv_theory.
 Section typing.
 Context {R : realType}.
 Implicit Types (Γ : seq (ty R)) (σ τ ρ : senv R) (t u v z step n : tm R)
-  (A B C E : ty R) (r s : sens R) (p : prob R).
+  (A B C E : ty R) (r s : Ω R) (p : ]0,1[ R).
 
 (* Γ ⊢[ σ ] t : A, for Γ and σ of the same length (typed_size).  Derivations
    live in Type so that the semantics (semantics.v) is defined by recursion
@@ -264,69 +333,119 @@ Implicit Types (Γ : seq (ty R)) (σ τ ρ : senv R) (t u v z step n : tm R)
    with u the pair and t the body, which is what its semantics computes. *)
 Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
 | typed_var Γ σ i A :
-    (i < size Γ)%N -> nth ty_unit Γ i = A -> 1 <= (nth sens0 σ i)%:num ->
+    (i < size Γ)%N ->
+    nth unit Γ i = A ->
+    1 <= (nth sens0 σ i)%:num ->
     size σ = size Γ ->
-    Γ ⊢[ σ ] tm_var i : A
+    (*———————————————————————————— (Var) *)
+    Γ ⊢[ σ ] # i : A
+
 | typed_abs Γ σ t A B r :
     A :: Γ ⊢[ r :: σ ] t : B ->
-    Γ ⊢[ σ ] tm_abs t : A ⊸[r] B
+    (*———————————————————————————— (Abs) *)
+    Γ ⊢[ σ ] λ t : A ⊸[r] B
+
 | typed_app Γ σ τ t u A B r :
-    Γ ⊢[ σ ] t : A ⊸[r] B -> Γ ⊢[ τ ] u : A ->
-    Γ ⊢[ σ ⧺ r *: τ ] tm_app t u : B
+    Γ ⊢[ σ ] t : A ⊸[r] B ->
+    Γ ⊢[ τ ] u : A ->
+    (*———————————————————————————— (App) *)
+    Γ ⊢[ σ ⧺ r *: τ ] t @ u : B
+
 | typed_unit Γ σ :
     size σ = size Γ ->
-    Γ ⊢[ σ ] tm_unit : ty_unit
+    (*———————————————————————————— (Unit) *)
+    Γ ⊢[ σ ] tm_unit : unit
+
 | typed_pair Γ σ t u A B :
-    Γ ⊢[ σ ] t : A -> Γ ⊢[ σ ] u : B ->
-    Γ ⊢[ σ ] tm_pair t u : A * B
+    Γ ⊢[ σ ] t : A ->
+    Γ ⊢[ σ ] u : B ->
+    (*———————————————————————————— (Pair) *)
+    Γ ⊢[ σ ] ⟨t, u⟩ : A × B
+
 | typed_proj1 Γ σ t A1 A2 :
-    Γ ⊢[ σ ] t : A1 * A2 ->
-    Γ ⊢[ σ ] tm_proj1 t : A1
+    Γ ⊢[ σ ] t : A1 × A2 ->
+    (*———————————————————————————— (π₁) *)
+    Γ ⊢[ σ ] π1 t : A1
+
 | typed_proj2 Γ σ t A1 A2 :
-    Γ ⊢[ σ ] t : A1 * A2 ->
-    Γ ⊢[ σ ] tm_proj2 t : A2
+    Γ ⊢[ σ ] t : A1 × A2 ->
+    (*———————————————————————————— (π₂) *)
+    Γ ⊢[ σ ] π2 t : A2
+
 | typed_inj1 Γ σ t A1 A2 :
     Γ ⊢[ σ ] t : A1 ->
-    Γ ⊢[ σ ] tm_inj1 t : A1 + A2
+    (*———————————————————————————— (inj₁) *)
+    Γ ⊢[ σ ] ι1 t : A1 + A2
+
 | typed_inj2 Γ σ t A1 A2 :
     Γ ⊢[ σ ] t : A2 ->
-    Γ ⊢[ σ ] tm_inj2 t : A1 + A2
+    (*———————————————————————————— (inj₂) *)
+    Γ ⊢[ σ ] ι2 t : A1 + A2
+
 | typed_case Γ σ τ t u v A B C r :
     Γ ⊢[ τ ] t : A + B ->
-    A :: Γ ⊢[ r :: σ ] u : C -> B :: Γ ⊢[ r :: σ ] v : C -> 0 < r%:num ->
+    A :: Γ ⊢[ r :: σ ] u : C ->
+    B :: Γ ⊢[ r :: σ ] v : C ->
+    0 < r%:num ->
+    (*———————————————————————————— (Case) *)
     Γ ⊢[ σ ⧺ r *: τ ] tm_case t u v : C
+
 | typed_tensor Γ σ τ ρ t u A B r s :
-    Γ ⊢[ σ ] t : A -> Γ ⊢[ τ ] u : B -> size ρ = size Γ ->
-    Γ ⊢[ r *: σ ⧺ s *: τ ⧺ ρ ] tm_tensor t u : A ⊗[r, s] B
+    Γ ⊢[ σ ] t : A ->
+    Γ ⊢[ τ ] u : B ->
+    size ρ = size Γ ->
+    (*———————————————————————————— (⊗) *)
+    Γ ⊢[ r *: σ ⧺ s *: τ ⧺ ρ ] t ⊗ u : A ⊗[r, s] B
+
 | typed_lettensor Γ σ τ t u A B C r s :
-    B :: A :: Γ ⊢[ s :: r :: σ ] t : C -> Γ ⊢[ τ ] u : A ⊗[r, s] B ->
-    Γ ⊢[ σ ⧺ τ ] tm_lettensor u t : C
+    B :: A :: Γ ⊢[ s :: r :: σ ] t : C ->
+    Γ ⊢[ τ ] u : A ⊗[r, s] B ->
+    (*———————————————————————————— (Let-⊗) *)
+    Γ ⊢[ σ ⧺ τ ] (let (,) := u in t) : C
+
 | typed_dirac Γ σ t A :
     Γ ⊢[ σ ] t : A ->
-    Γ ⊢[ σ ] tm_dirac t : ty_dist A
+    (*———————————————————————————— (δ) *)
+    Γ ⊢[ σ ] δ t : 𝕎 A
+
 | typed_choice Γ σ τ t u A p :
-    Γ ⊢[ σ ] t : ty_dist A -> Γ ⊢[ τ ] u : ty_dist A ->
-    Γ ⊢[ prob_sens p *: σ ⧺ prob_sensC p *: τ ] tm_choice p t u : ty_dist A
+    Γ ⊢[ σ ] t : 𝕎 A ->
+    Γ ⊢[ τ ] u : 𝕎 A ->
+    (*———————————————————————————— (⅋ₚ) *)
+    Γ ⊢[ p *: σ ⧺ (1 - p) *: τ ] t ⅋[p] u : 𝕎 A
+
 | typed_let Γ σ τ t u A E r :
-    A :: Γ ⊢[ r :: σ ] t : E -> Γ ⊢[ τ ] u : ty_dist A ->
-    ib_ty E -> r%:num < +oo ->
+    A :: Γ ⊢[ r :: σ ] t : E ->
+    Γ ⊢[ τ ] u : 𝕎 A ->
+    ib_ty E ->
+    r%:num < +oo ->
+    (*———————————————————————————— (Let) *)
     Γ ⊢[ σ ⧺ r *: τ ] tm_let u t : E
+
 | typed_zero Γ σ :
     size σ = size Γ ->
-    Γ ⊢[ σ ] tm_zero : ty_nat
+    (*———————————————————————————— (Zero) *)
+    Γ ⊢[ σ ] tm_zero : ℕ
+
 | typed_succ Γ σ t :
-    Γ ⊢[ σ ] t : ty_nat ->
-    Γ ⊢[ σ ] tm_succ t : ty_nat
+    Γ ⊢[ σ ] t : ℕ ->
+    (*———————————————————————————— (Succ) *)
+    Γ ⊢[ σ ] succ t : ℕ
+
 | typed_natrec Γ σ τ ρ z step n A :
-    Γ ⊢[ σ ] z : A -> ty_nat :: A :: Γ ⊢[ sens1 :: sens1 :: τ ] step : A ->
-    Γ ⊢[ ρ ] n : ty_nat ->
-    Γ ⊢[ σ ⧺ sensy *: τ ⧺ ρ ] tm_natrec z step n : A
-(* (FIX): the premise (1 - r)Γ, x :^r A ⊢ t : A with r < 1.  Its semantics
+    Γ ⊢[ σ ] z : A ->
+    ℕ :: A :: Γ ⊢[ sens1 :: sens1 :: τ ] step : A ->
+    Γ ⊢[ ρ ] n : ℕ ->
+    (*———————————————————————————— (Rec) *)
+    Γ ⊢[ σ ⧺ sensy *: τ ⧺ ρ ] rec z step n : A
+
+(* (Fix): the premise (1 - r)Γ, x :^r A ⊢ t : A with r < 1.  Its semantics
    needs, in addition, a seed at finite displacement or a single-galaxy
    codomain (fixpoint.v). *)
 | typed_fix Γ σ t A (r : contr R) :
     A :: Γ ⊢[ contr_sens r :: contr_sensC r *: σ ] t : A ->
-    Γ ⊢[ σ ] tm_fix t : A
+    (*———————————————————————————— (Fix) *)
+    Γ ⊢[ σ ] μ t : A
 where "Γ ⊢[ σ ] t : A" := (typed Γ σ t A).
 
 Let size_cons_inj {T U : Type} {x : T} {y : U} {s : seq T} {t : seq U} :
@@ -367,7 +486,7 @@ Proof. by move/typed_size => /= []. Qed.
 
 (* The identity, λ x. x : A ⊸[r] A for every r >= 1 (a transparent derivation,
    so that its semantics computes). *)
-Example typed_id A r : 1 <= r%:num -> [::] ⊢[ [::] ] tm_abs (tm_var 0) : A ⊸[r] A.
+Example typed_id A r : 1 <= r%:num -> [::] ⊢[ [::] ] λ # 0 : A ⊸[r] A.
 Proof. by move=> r1; apply/typed_abs/typed_var. Defined.
 
 End typing.
