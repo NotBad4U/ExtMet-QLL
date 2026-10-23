@@ -987,4 +987,6 @@ move=> fin; rw /= /sem_fix /semfix /= fin.
 by have := pfix_edist0 (sem_fix_contr (sem d) γ) fin.
 Qed.
 
+
+
 End semantics.

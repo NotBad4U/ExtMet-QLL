@@ -1,7 +1,8 @@
 (* The internal logic of the calculus (paper, Sect. "Logic"): the truth values
    Prop = [0, +oo] and their connectives, the predicates and their typing, the
-   graded entailment and its rules, and their semantics.  No property is
-   proved here. *)
+   graded entailment and its rules, and their semantics.  The properties
+   proved are those of the equality predicate and the adjunctions of the
+   quantifiers to reindexing (Lawvere), with Frobenius and Beck-Chevalley. *)
 From HB Require Import structures.
 From mathcomp Require Import boot order ssralg ssrnum ssrint interval.
 From mathcomp Require Import interval_inference.
@@ -16,11 +17,14 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (*                                                                            *)
 (* Predicates are terms of type Prop, the truth values [0, +oo] with the log  *)
 (* metric, and reasoning is a graded entailment Δ ∣ Ψ ⊢[ p ] φ whose grade p  *)
-(* is the softness.  Everything is defined; the only properties proved are   *)
-(* those of the equality predicate (an equivalence, substitutive for the     *)
-(* predicates non-expansive for the log metric).  The pseudometric structure *)
-(* of Prop, the non-expansiveness of the connectives and of ⟦φ⟧, and the     *)
-(* soundness of the entailment are left as TODOs.                            *)
+(* is the softness.  The properties proved are those of the equality         *)
+(* predicate (an equivalence, substitutive for the predicates non-expansive  *)
+(* for the log metric) and of the quantifiers: at every grade s they are the *)
+(* Prop-enriched adjoints of the reindexing along a projection (Lawvere),    *)
+(* with Frobenius reciprocity and the Beck-Chevalley condition (Section      *)
+(* QuantAdjoint).  The pseudometric structure of Prop, the non-expansiveness *)
+(* of the connectives and of ⟦φ⟧, and the soundness of the entailment are    *)
+(* left as TODOs.                                                            *)
 (*                                                                            *)
 (* ```                                                                        *)
 (*            prop R == the truth values [0, +oo], the carrier of Ω with the  *)
@@ -40,6 +44,10 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (*                      distance adist (peq_isometry), non-expansive on     *)
 (*                      A ⊗ A (peq_edist_le)                                 *)
 (*          hsum p q == the harmonic sum of grades (p^-1 + q^-1)^-1          *)
+(*                      Section prop_algebra: a** = a, a* antitone, ⊗        *)
+(*                      commutative, associative with unit 1, (a ⊗ b)* =    *)
+(*                      a* ⊗* b*, a ⊸ b = (a ⊗ b* )*, (a ⊗ b) ⊸ c =          *)
+(*                      a ⊸ (b ⊸ c), a ⊸ a true                              *)
 (*            pred R == the predicates φ, ψ ::= ⊤ | ⊥ | t =[ A ] u | φ ⊗ ψ   *)
 (*                      | φ ⅋ ψ (⊗* ) | φ ⊸ ψ | r *: φ | φ ^* | φ ∨[ s ] ψ    *)
 (*                      | φ ∧[ s ] ψ | ∀[ s ] m , φ | ∃[ s ] m , φ            *)
@@ -50,11 +58,34 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (*        discrete Δ == the environment of the discrete context Δ (all +oo)  *)
 (*   Δ ∣ Ψ ⊢[ p ] φ == the graded entailment entails Δ Ψ p φ; logical        *)
 (*                      contexts are lists, last formula first               *)
-(*          wmeans W == the s-means (∫ g^s dm)^(1/s) of the monad, the       *)
-(*                      interpretation of the quantifiers                    *)
+(*          wmeans W == the s-means wmean s mu g = (∫ g^s dmu)^(1/s) of the  *)
+(*                      monad, the interpretation of the quantifiers, with  *)
+(*                      their laws: wmean_cst (mean of a constant),         *)
+(*                      wmean_le (monotone), wmean_tens (homogeneous),      *)
+(*                      wmean_map (change of variables), wmean_join (Fubini) *)
+(*     hmean M s mu g == the harmonic s-mean (wmean s mu g* )*               *)
+(*   phom M s mu φ ψ == [φ, ψ]^s_mu = ∀^s_(x ~ mu) (φ x ⊸ ψ x), the Prop-    *)
+(*                      enriched hom of the predicates on T at grade s       *)
 (*       psem W M d == ⟦Γ ⊩ φ⟧ : ⟦Γ⟧ -> Prop, by recursion on d              *)
-(*  valid W M mu p Ψ φ == 1 <= ∫^(-p)_(γ ~ mu) (⊗Ψ ⊸ φ)(γ), the validity of  *)
-(*                      the entailment under the reference measure mu on ⟦Δ⟧ *)
+(*  valid W M mu p Ψ φ == 1 <= [⊗Ψ, φ]^p_mu, the validity of the entailment  *)
+(*                      under the reference measure mu on ⟦Δ⟧                *)
+(*                      Section QuantAdjoint, for π : X × Y -> X:            *)
+(*          reindex φ == π^* φ = φ ∘ π, the reindexing (weakening)           *)
+(* qexists s m ψ, qforall s m ψ == ∃^s (y ~ m x). ψ (x, y) and               *)
+(*                      ∀^s (y ~ m x). ψ (x, y), the quantifiers along π     *)
+(*         wpair mu m == the kernel product mu ⋈ m on X × Y (wmean_pair)     *)
+(* qexists_adj, qforall_adj == the graded adjunctions ∃^s ⊣ π^* ⊣ ∀^s, as    *)
+(*                      equalities of homs at grade s; at the threshold the *)
+(*                      rules qforall_I, qexists_E (invertible), the unit    *)
+(*                      qexists_unit and counit qforall_counit; pointwise    *)
+(*                      the lax forms qexists_le, qforall_ge                 *)
+(* qforall_dual, qexists_dual == De Morgan, (∀^s ψ)* = ∃^s ψ* and            *)
+(*                      (∃^s ψ)* = ∀^s ψ* (psem_dual_forall, psem_dual_exists *)
+(*                      for the predicates)                                  *)
+(* qexists_frobenius, qforall_frobenius, qforall_imp == Frobenius           *)
+(*                      reciprocity ∃^s (ψ ⊗ π^* φ) = ∃^s ψ ⊗ φ and its duals *)
+(* qexists_bc, qforall_bc == the Beck-Chevalley condition for a base change  *)
+(* qexists_map, qforall_map == the change of variables along id × g          *)
 (* ```                                                                        *)
 (******************************************************************************)
 
@@ -228,6 +259,105 @@ Notation "a ∨[ s ] b" := (por s a b)
 Notation "a ∧[ s ] b" := (pand s a b)
   (at level 80, right associativity, format "a  ∧[ s ]  b") : prop_scope.
 Notation "a ⊑ b" := (ple a b) (at level 70, format "a  ⊑  b") : prop_scope.
+
+(** * The algebra of the truth values *)
+
+(* The involution a* is antitone and a** = a; ⊗ is commutative, associative
+   with unit 1; (a ⊗ b)* = a* ⊗* b*, a ⊸ b = (a ⊗ b* )*, so that
+   (a ⊗ b) ⊸ c = a ⊸ (b ⊸ c) (currying) and a ⊸ a is true. *)
+Section prop_algebra.
+Context {R : realType}.
+Implicit Types (a b c : prop R) (x y : \bar R) (r : R).
+Local Open Scope prop_scope.
+
+Lemma estar0 : estar (0 : \bar R) = +oo.
+Proof. by rw /estar eqxx. Qed.
+
+Lemma estary : estar (+oo : \bar R) = 0.
+Proof. by rw /estar (gt_eqF lt0y) eqxx. Qed.
+
+Lemma estar_fin r : (0 < r)%R -> estar r%:E = (r^-1)%:E.
+Proof. by move=> r0; rw /estar eqe gt_eqF // (lt_eqF (ltry r)). Qed.
+
+Lemma estarK x : 0 <= x -> estar (estar x) = x.
+Proof.
+case: x => [r||] //= => [r0|_]; last by rw estary estar0.
+have [->|rn0] := eqVneq r 0%R; first by rw estar0 estary.
+have r0' : (0 < r)%R by rw lt_def rn0.
+by rw !estar_fin ?invr_gt0 // invrK.
+Qed.
+
+Lemma estar_le x y : 0 <= x -> x <= y -> estar y <= estar x.
+Proof.
+case: x y => [r||] [r'||] //= => [r0 rr'|r0 _].
+- have [->|rn0] := eqVneq r 0%R; first by rw estar0 leey.
+  have r0' : (0 < r)%R by rw lt_def rn0.
+  have r0'' : (0 < r')%R by exact: lt_le_trans r0' rr'.
+  by rw !estar_fin // lee_fin lef_pV2 ?posrE.
+- by rw estary; exact: estar_ge0.
+Qed.
+
+Lemma pstarK a : a^*^* = a.
+Proof. by apply/val_inj => /=; exact: (estarK (ge0e a)). Qed.
+
+Lemma pstar_le a b : a ⊑ b -> b^* ⊑ a^*.
+Proof. exact: estar_le (ge0e a). Qed.
+
+Lemma ple_pstar a b : b^* ⊑ a^* <-> a ⊑ b.
+Proof.
+split=> [h|]; last exact: pstar_le.
+by rw -(pstarK a) -(pstarK b); exact: pstar_le.
+Qed.
+
+Lemma ptensC a b : a ⊗ b = b ⊗ a.
+Proof. by apply/val_inj; rw /= muleC. Qed.
+
+Lemma ptensA a b c : a ⊗ (b ⊗ c) = a ⊗ b ⊗ c.
+Proof. by apply/val_inj; rw /= muleA. Qed.
+
+Lemma ptens1 a : a ⊗ pone = a.
+Proof. by apply/val_inj; rw /= mule1. Qed.
+
+Lemma ptens1p a : pone ⊗ a = a.
+Proof. by apply/val_inj; rw /= mul1e. Qed.
+
+Lemma pparC a b : a ⅋ b = b ⅋ a.
+Proof. by rw /ppar ptensC. Qed.
+
+Lemma pimpE a b : a ⊸ b = (a ⊗ b^*)^*.
+Proof. by rw /pimp /ppar pstarK. Qed.
+
+Lemma pstar_imp a b : (a ⊸ b)^* = a ⊗ b^*.
+Proof. by rw pimpE pstarK. Qed.
+
+Lemma pstar_tens a b : (a ⊗ b)^* = a^* ⅋ b^*.
+Proof. by rw /ppar !pstarK. Qed.
+
+Lemma pstar_par a b : (a ⅋ b)^* = a^* ⊗ b^*.
+Proof. by rw /ppar pstarK. Qed.
+
+Lemma pimp_tens a b c : (a ⊗ b) ⊸ c = a ⊸ (b ⊸ c).
+Proof. by rw !pimpE pstarK ptensA. Qed.
+
+Lemma ptrueP a : ptrue a <-> pone ⊑ a.
+Proof. by []. Qed.
+
+Lemma ptrue_le a b : ptrue a -> a ⊑ b -> ptrue b.
+Proof. exact: le_trans. Qed.
+
+Lemma estar_self x : 0 <= x -> 1 <= estar (x * estar x).
+Proof.
+case: x => [r||] //= => [r0|_]; last by rw estary mule0 estar0 leey.
+have [->|rn0] := eqVneq r 0%R; first by rw estar0 mul0e estar0 leey.
+have r0' : (0 < r)%R by rw lt_def rn0.
+rw estar_fin // -EFinM divff ?gt_eqF // estar_fin ?ltr01 // invr1.
+exact: lexx.
+Qed.
+
+Lemma pimp_refl a : ptrue (a ⊸ a).
+Proof. by rw /ptrue pimpE pstarE ptensE pstarE; exact: estar_self (ge0e a). Qed.
+
+End prop_algebra.
 
 (** * Equality is an equivalence *)
 
@@ -657,21 +787,55 @@ Notation "Δ ∣ Ψ ⊢[ p ] φ" := (entails Δ Ψ p φ) : type_scope.
 (* The s-means of the monad, (∫ g(x)^s dm(x))^(1/s) for s in [0, +oo] (the
    sup of g on the support of m at s = +oo), which interpret the quantifiers
    ∃^s_A : W A ⊗ (A ⊸ Prop) -> Prop; the harmonic mean of ∀^s is derived
-   through the involution.  TODO: non-expansiveness in g (sup-log metric, every
-   s) and in m (Kantorovich). *)
+   through the involution.  The value of a mean only depends on the carrier
+   of X (the metric enters the non-expansiveness), and the record lists the
+   laws of the means that the adjunctions of the quantifiers use: the mean
+   of a constant (m is a probability), monotonicity, homogeneity in ⊗ (an
+   s-mean commutes with the scaling by a constant), the change of variables
+   along a pushforward and the iterated means of a join (Fubini).  TODO:
+   non-expansiveness in g (sup-log metric, every s) and in m (Kantorovich),
+   and the Hölder inequality of the cut. *)
+Unset Implicit Arguments.
+
 Record wmeans (R : realType) (W : wmonad R) := WMeans {
-  wmean : forall X : pseudoMetricType R, Ω R -> WT W X -> (X -> prop R) -> prop R
+  wmean : forall T : Type, Ω R -> WT W T -> (T -> prop R) -> prop R;
+  (* (∫ a^s dm)^(1/s) = a *)
+  wmean_cst : forall (T : Type) (s : Ω R) (m : WT W T) (a : prop R),
+    wmean T s m (fun=> a) = a;
+  (* g <= h pointwise implies (∫ g^s dm)^(1/s) <= (∫ h^s dm)^(1/s) *)
+  wmean_le : forall (T : Type) (s : Ω R) (m : WT W T) (g h : T -> prop R),
+    (forall x, ple (g x) (h x)) -> ple (wmean T s m g) (wmean T s m h);
+  (* (∫ (a g)^s dm)^(1/s) = a (∫ g^s dm)^(1/s) *)
+  wmean_tens : forall (T : Type) (s : Ω R) (m : WT W T) (a : prop R)
+      (g : T -> prop R),
+    wmean T s m (fun x => ptens a (g x)) = ptens a (wmean T s m g);
+  (* ∫ g d(f_* m) = ∫ g ∘ f dm *)
+  wmean_map : forall (X Y : pseudoMetricType R) (s : Ω R) (f : X -o Y)
+      (m : WT W X) (g : Y -> prop R),
+    wmean Y s (wmap W f m) g = wmean X s m (fun x => g (f x));
+  (* ∫ g d(join M) = ∫ (∫ g dn) dM(n), taken at the power s on both sides *)
+  wmean_join : forall (T : Type) (s : Ω R) (M : WT W (WT W T))
+      (g : T -> prop R),
+    wmean T s (wjoin W M) g = wmean (WT W T) s M (fun n => wmean T s n g)
 }.
 
-Arguments wmean {R W} w {X} s mu g.
+Arguments wmeans {R} W.
+Arguments wmean {R W} w {T} s mu g.
+Arguments wmean_cst {R W} w {T} s m a.
+Arguments wmean_le {R W} w {T} s m g h.
+Arguments wmean_tens {R W} w {T} s m a g.
+Arguments wmean_map {R W} w {X Y} s f m g.
+Arguments wmean_join {R W} w {T} s M g.
+
+Set Implicit Arguments.
 
 Section logic_semantics.
 Context {R : realType} (W : wmonad R) (M : wmeans W).
 Local Open Scope prop_scope.
 
 (* The harmonic s-mean (∫ g^(-s) dm)^(-1/s) = ((∫ (g* )^s dm)^(1/s))*. *)
-Definition hmean (X : pseudoMetricType R) (s : Ω R) (mu : WT W X)
-  (g : X -> prop R) : prop R := (wmean M s mu (fun x => (g x)^*))^*.
+Definition hmean (T : Type) (s : Ω R) (mu : WT W T) (g : T -> prop R)
+  : prop R := (wmean M s mu (fun x => (g x)^*))^*.
 
 (* ⟦Γ ⊩ φ⟧ : ⟦Γ⟧ -> Prop, the clauses of the paper with split the identity
    on the common carrier of the contexts; r φ is the power a^r.  TODO:
@@ -718,9 +882,36 @@ Lemma psem_eq_trans Γ σ τ ρ t u v A (d1 : Γ ⊢[ σ ] t : A)
   psem (ptyped_eq d1 d3) γ.
 Proof. exact: peq_trans. Qed.
 
+(* De Morgan for the predicates: ⟦(∀^s (x ~ m). φ)*⟧ = ⟦∃^s (x ~ m). φ*⟧ and
+   ⟦(∃^s (x ~ m). φ)*⟧ = ⟦∀^s (x ~ m). φ*⟧, the involution exchanging the
+   s-mean and the harmonic s-mean. *)
+Lemma psem_dual_forall Γ σ τ φ m A s (dφ : A :: Γ ⊩[ s :: σ ] φ)
+    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ τ)) :
+  psem (ptyped_dual (ptyped_forall dφ dm)) γ =
+  psem (ptyped_exists (ptyped_dual dφ) dm) γ.
+Proof. by rw /= /hmean pstarK. Qed.
+
+Lemma psem_dual_exists Γ σ τ φ m A s (dφ : A :: Γ ⊩[ s :: σ ] φ)
+    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ τ)) :
+  psem (ptyped_dual (ptyped_exists dφ dm)) γ =
+  psem (ptyped_forall (ptyped_dual dφ) dm) γ.
+Proof.
+by rw /= /hmean; congr pstar; congr wmean; apply/funext => a; rw pstarK.
+Qed.
+
 (* ⊗Ψ, the tensor of an interpreted logical context. *)
 Definition ptens_all (E : Type) (Ψ : seq (E -> prop R)) (γ : E) : prop R :=
   foldr (fun ψ a => ψ γ ⊗ a) pone Ψ.
+
+Lemma ptens_all_cons (E : Type) (ψ : E -> prop R) Ψ γ :
+  ptens_all (ψ :: Ψ) γ = ψ γ ⊗ ptens_all Ψ γ.
+Proof. by []. Qed.
+
+(* [φ, ψ]^s_mu = ∀^s_(x ~ mu) (φ x ⊸ ψ x), the Prop-enriched hom of two
+   predicates on T at grade s under the reference measure mu, whose truth is
+   the validity of φ ⊢_s ψ. *)
+Definition phom (T : Type) (s : Ω R) (mu : WT W T) (φ ψ : T -> prop R)
+  : prop R := hmean s mu (fun x => φ x ⊸ ψ x).
 
 (* The validity of Δ ∣ Ψ ⊢_p φ under a reference measure mu on ⟦Δ⟧: the
    harmonic p-mean of the implication (⊗Ψ) ⊸ φ is true, 1 <= ∫^(-p) (⊗Ψ ⊸ φ);
@@ -729,6 +920,300 @@ Definition ptens_all (E : Type) (Ψ : seq (E -> prop R)) (γ : E) : prop R :=
 Definition valid (Δ : seq (ty R)) (mu : WT W (ctxC W Δ (discrete Δ)))
     (p : Ω R) (Ψ : seq (ctxC W Δ (discrete Δ) -> prop R))
     (φ : ctxC W Δ (discrete Δ) -> prop R) : Prop :=
-  ptrue (hmean p mu (fun γ => ptens_all Ψ γ ⊸ φ γ)).
+  ptrue (phom p mu (ptens_all Ψ) φ).
 
 End logic_semantics.
+
+(** * The quantifiers are adjoint to reindexing *)
+
+(* Lawvere's description of the quantifiers: along the projection
+   π : X × Y -> X, the reindexing π^* φ = φ ∘ π (weakening) has the
+   quantifiers as adjoints, ∃ ⊣ π^* ⊣ ∀.  Here the predicates on X form a
+   Prop-enriched category, with the hom at grade s under the reference
+   measure mu the quantity phom s mu φ ψ = ∀^s_(x ~ mu) (φ x ⊸ ψ x) whose
+   truth is the validity of φ ⊢_s ψ; on X × Y the reference measure is the
+   kernel product wpair mu m (x ~ mu, y ~ m x).  The adjunctions hold as
+   equalities of homs at the matching grade s, the paper's "graded
+   adjoints":
+
+     [∃^s_m ψ, φ]_mu = [ψ, π^* φ]_(mu ⋈ m)    [φ, ∀^s_m ψ]_mu = [π^* φ, ψ]_(mu ⋈ m)
+
+   whose instances at the truth threshold are the rules (∀ˢ-I) and (∃ˢ-E)
+   of the entailment (both invertible) and the unit ψ ⊢_s π^* ∃^s ψ and
+   counit π^* ∀^s ψ ⊢_s ψ.  In the pointwise order the adjunctions are only
+   lax, since an s-mean is not a bound at s < +oo.  Frobenius reciprocity
+   ∃^s (ψ ⊗ π^* φ) = ∃^s ψ ⊗ φ (dually with ⊗* and ⊸ for ∀^s) is the
+   homogeneity of the means; the Beck-Chevalley condition for a base change
+   f : X' -> X holds on the nose, the quantifiers being computed fibrewise
+   with the reindexed measure m ∘ f, and the change of variables along
+   id × g pushes the reference measure forward.  Everything follows from the
+   laws of wmeans and the algebra of Prop (prop_algebra). *)
+Section QuantAdjoint.
+Context {R : realType} (W : wmonad R) (M : wmeans W).
+Local Open Scope prop_scope.
+
+(* The harmonic means and the homs: constants, monotonicity, homogeneity in
+   ⊗* and ⊸, and the graded reflexivity φ ⊢_s φ. *)
+Section means.
+Context (T : Type).
+Implicit Types (s : Ω R) (mu : WT W T) (g h φ : T -> prop R) (a : prop R).
+
+Lemma hmean_cst s mu a : hmean M s mu (fun=> a) = a.
+Proof. by rw /hmean wmean_cst pstarK. Qed.
+
+Lemma hmean_le s mu g h :
+  (forall x, g x ⊑ h x) -> hmean M s mu g ⊑ hmean M s mu h.
+Proof.
+move=> gh; rw /hmean; apply/pstar_le/wmean_le => x.
+exact: pstar_le (gh x).
+Qed.
+
+Lemma hmean_ge1 s mu g : (forall x, ptrue (g x)) -> ptrue (hmean M s mu g).
+Proof.
+move=> g1; apply/ptrueP; rw -[pone](hmean_cst s mu); apply: hmean_le => x.
+exact: g1.
+Qed.
+
+Lemma hmean_par s mu a g :
+  hmean M s mu (fun x => a ⅋ g x) = a ⅋ hmean M s mu g.
+Proof.
+rw /hmean -[in RHS](pstarK a) -pstar_tens -wmean_tens.
+by congr pstar; congr wmean; apply/funext => x; rw pstar_par.
+Qed.
+
+Lemma hmean_imp s mu a g :
+  hmean M s mu (fun x => a ⊸ g x) = a ⊸ hmean M s mu g.
+Proof. by rw /pimp; exact: hmean_par. Qed.
+
+Lemma phom_refl s mu φ : ptrue (phom M s mu φ φ).
+Proof. by apply: hmean_ge1 => x; exact: pimp_refl. Qed.
+
+(* The two means are dual to each other under the involution. *)
+Lemma hmean_dual s mu g : (hmean M s mu g)^* = wmean M s mu (fun x => (g x)^*).
+Proof. by rw /hmean pstarK. Qed.
+
+Lemma wmean_dual s mu g : (wmean M s mu g)^* = hmean M s mu (fun x => (g x)^*).
+Proof. by rw /hmean; congr pstar; congr wmean; apply/funext => x; rw pstarK. Qed.
+
+End means.
+
+(* The reindexing and the quantifiers along π : X × Y -> X, which only need
+   the carriers: π^* φ = φ ∘ π (weakening), ∃^s (y ~ m x). ψ (x, y) and
+   ∀^s (y ~ m x). ψ (x, y) at grade s with the reference measure m, computed
+   fibrewise. *)
+Section quantifiers.
+Context (X Y : Type).
+Implicit Types (s : Ω R) (m : X -> WT W Y) (φ χ : X -> prop R)
+  (ψ : X * Y -> prop R) (Ψ : seq (X -> prop R)).
+
+Definition reindex φ (u : X * Y) : prop R := φ u.1.
+
+Definition qexists s m ψ : X -> prop R :=
+  fun x => wmean M s (m x) (fun y => ψ (x, y)).
+
+Definition qforall s m ψ : X -> prop R :=
+  fun x => hmean M s (m x) (fun y => ψ (x, y)).
+
+Lemma ptens_all_reindex Ψ : ptens_all (map reindex Ψ) = reindex (ptens_all Ψ).
+Proof. by apply/funext => u; rw /ptens_all /reindex foldr_map. Qed.
+
+(* In the pointwise order the adjunctions are lax: an s-mean lies between
+   the bounds of the integrand (the converses hold at s = +oo on the support
+   of m only); the exact adjunctions are the equalities of homs below. *)
+Lemma qexists_le s m ψ φ :
+  (forall u, ψ u ⊑ reindex φ u) -> forall x, qexists s m ψ x ⊑ φ x.
+Proof.
+move=> le x; rw /qexists -[φ x](wmean_cst M s (m x)); apply: wmean_le => y.
+exact: le (x, y).
+Qed.
+
+Lemma qforall_ge s m φ ψ :
+  (forall u, reindex φ u ⊑ ψ u) -> forall x, φ x ⊑ qforall s m ψ x.
+Proof.
+move=> le x; rw /qforall -[φ x](hmean_cst s (m x)); apply: hmean_le => y.
+exact: le (x, y).
+Qed.
+
+(* Frobenius reciprocity ∃^s (ψ ⊗ π^* φ) = ∃^s ψ ⊗ φ, the homogeneity of the
+   means, and its duals ∀^s (ψ ⊗* π^* φ) = ∀^s ψ ⊗* φ and
+   ∀^s (π^* φ ⊸ ψ) = φ ⊸ ∀^s ψ. *)
+Lemma qexists_frobenius s m ψ φ :
+  qexists s m (fun u => ψ u ⊗ reindex φ u) = fun x => qexists s m ψ x ⊗ φ x.
+Proof.
+apply/funext => x; rw /qexists /reindex /= [RHS]ptensC -wmean_tens.
+by congr wmean; apply/funext => y; rw ptensC.
+Qed.
+
+Lemma qforall_frobenius s m ψ φ :
+  qforall s m (fun u => ψ u ⅋ reindex φ u) = fun x => qforall s m ψ x ⅋ φ x.
+Proof.
+apply/funext => x; rw /qforall /reindex /= [RHS]pparC -hmean_par.
+by congr hmean; apply/funext => y; rw pparC.
+Qed.
+
+Lemma qforall_imp s m φ ψ :
+  qforall s m (fun u => reindex φ u ⊸ ψ u) = fun x => φ x ⊸ qforall s m ψ x.
+Proof. by apply/funext => x; rw /qforall /reindex /= hmean_imp. Qed.
+
+(* De Morgan: (∀^s ψ)* = ∃^s ψ* and (∃^s ψ)* = ∀^s ψ*, so that each
+   quantifier is the dual of the other, ∀^s ψ = (∃^s ψ* )*. *)
+Lemma qforall_dual s m ψ :
+  (fun x => (qforall s m ψ x)^*) = qexists s m (fun u => (ψ u)^*).
+Proof. by apply/funext => x; rw /qforall hmean_dual. Qed.
+
+Lemma qexists_dual s m ψ :
+  (fun x => (qexists s m ψ x)^*) = qforall s m (fun u => (ψ u)^*).
+Proof. by apply/funext => x; rw /qexists /qforall wmean_dual. Qed.
+
+Lemma qforallE s m ψ :
+  qforall s m ψ = fun x => (qexists s m (fun u => (ψ u)^*) x)^*.
+Proof. by rw -qforall_dual; apply/funext => x /=; rw pstarK. Qed.
+
+Lemma qexistsE s m ψ :
+  qexists s m ψ = fun x => (qforall s m (fun u => (ψ u)^*) x)^*.
+Proof. by rw -qexists_dual; apply/funext => x /=; rw pstarK. Qed.
+
+End quantifiers.
+
+Arguments reindex {X Y} φ u.
+Arguments qexists {X Y} s m ψ.
+Arguments qforall {X Y} s m ψ.
+
+(* The Beck-Chevalley condition: for a base change f : X' -> X the square
+
+       X' × Y --f × id--> X × Y
+         |π'                |π
+         X'   -----f----->  X
+
+   is a pullback, and f^* ∘ ∃^s_m = ∃^s_(m ∘ f) ∘ (f × id)^* (dually for ∀^s)
+   holds on the nose, the quantifiers being computed fibrewise with the
+   reindexed reference measure m ∘ f. *)
+Section beck_chevalley.
+Context (X X' Y : Type) (f : X' -> X).
+
+Definition base_change (ψ : X * Y -> prop R) : X' * Y -> prop R :=
+  fun u => ψ (f u.1, u.2).
+
+Lemma qexists_bc s (m : X -> WT W Y) ψ :
+  qexists s (m \o f) (base_change ψ) = fun x' => qexists s m ψ (f x').
+Proof. by []. Qed.
+
+Lemma qforall_bc s (m : X -> WT W Y) ψ :
+  qforall s (m \o f) (base_change ψ) = fun x' => qforall s m ψ (f x').
+Proof. by []. Qed.
+
+End beck_chevalley.
+
+Arguments base_change {X X' Y} f ψ.
+
+(* The adjunctions, for a non-expansive reference measure m : X -o W Y and
+   the kernel product mu ⋈ m as the reference measure on X × Y. *)
+Section kernel_product.
+Context (X Y : pseudoMetricType R).
+Implicit Types (s : Ω R) (mu : WT W X) (m : X -o wsp W Y) (φ χ : X -> prop R)
+  (ψ : X * Y -> prop R) (Ψ : seq (X -> prop R)).
+
+(* The kernel product mu ⋈ m on X × Y (x ~ mu, y ~ m x): the join of the
+   pushforward of mu along the pairing kernel x ↦ δ_x ⊗ m x, which is
+   2-Lipschitz (as the diagonal of X ⊗ X), hence a morphism out of 2 X. *)
+Lemma pair_ne (x : X) : @nonexpansive R Y (tensor X Y) (fun y => (x, y)).
+Proof.
+by apply/nonexpansiveP => y y'; rw tensor_edistE /= edist_refl add0e lexx.
+Qed.
+
+Definition pair_nemap x : Y -o tensor X Y := NEMap (pair_ne x).
+
+Lemma two_ge0 : (0 : \bar R) <= 2%:R%:E.
+Proof. by rw lee_fin ler0n. Qed.
+
+Definition two : Ω R := mkprop two_ge0.
+
+Lemma wpair_kernel_ne m : @nonexpansive R (scale two X) (wsp W (tensor X Y))
+  (fun x => wmap W (pair_nemap x) (m x)).
+Proof.
+apply/nonexpansiveP => x x'; rw scale_edistE /two mkpropE mule_natl mule2n.
+apply: le_trans (edist_triangle _ (wmap W (pair_nemap x') (m x) :
+  wsp W (tensor X Y)) _) _.
+apply: leeD.
+  by apply: wmap_bound => y; rw tensor_edistE /pair_nemap /= edist_refl adde0 lexx.
+by apply: le_trans (wmap_dist W (pair_nemap x') (m x) (m x')) _; exact: nemapP.
+Qed.
+
+Definition wpair mu m : WT W (X * Y) :=
+  wjoin W (wmap W (NEMap (wpair_kernel_ne m)) (mu : WT W (scale two X))).
+
+(* Fubini: the means over mu ⋈ m are the iterated means. *)
+Lemma wmean_pair s mu m (g : X * Y -> prop R) :
+  wmean M s (wpair mu m) g =
+  wmean M s mu (fun x => wmean M s (m x) (fun y => g (x, y))).
+Proof.
+rw /wpair wmean_join (wmean_map M s (NEMap (wpair_kernel_ne m)) mu).
+congr wmean; apply/funext => x /=.
+by rw (wmean_map M s (pair_nemap x) (m x)).
+Qed.
+
+(* ∃^s ⊣ π^* at grade s: [∃^s_m ψ, φ]_mu = [ψ, π^* φ]_(mu ⋈ m). *)
+Theorem qexists_adj s mu m ψ φ :
+  phom M s mu (qexists s m ψ) φ = phom M s (wpair mu m) ψ (reindex φ).
+Proof.
+rw /phom /hmean wmean_pair; congr pstar; congr wmean; apply/funext => x.
+rw /reindex /= pstar_imp ptensC /qexists -wmean_tens; congr wmean.
+by apply/funext => y; rw pstar_imp ptensC.
+Qed.
+
+(* π^* ⊣ ∀^s at grade s: [φ, ∀^s_m ψ]_mu = [π^* φ, ψ]_(mu ⋈ m). *)
+Theorem qforall_adj s mu m φ ψ :
+  phom M s mu φ (qforall s m ψ) = phom M s (wpair mu m) (reindex φ) ψ.
+Proof.
+rw /phom /hmean wmean_pair; congr pstar; congr wmean; apply/funext => x.
+rw /reindex /= pstar_imp /qforall /hmean pstarK -wmean_tens; congr wmean.
+by apply/funext => y; rw pstar_imp.
+Qed.
+
+(* The unit ψ ⊢_s π^* ∃^s ψ and the counit π^* ∀^s ψ ⊢_s ψ are valid at
+   grade s. *)
+Lemma qexists_unit s mu m ψ :
+  ptrue (phom M s (wpair mu m) ψ (reindex (qexists s m ψ))).
+Proof. by rw -qexists_adj; exact: phom_refl. Qed.
+
+Lemma qforall_counit s mu m ψ :
+  ptrue (phom M s (wpair mu m) (reindex (qforall s m ψ)) ψ).
+Proof. by rw -qforall_adj; exact: phom_refl. Qed.
+
+(* The rules (∀ˢ-I) and (∃ˢ-E) of the entailment at the semantic level, with
+   the reference measure mu ⋈ m on the extended context: the adjunctions at
+   the truth threshold, hence invertible. *)
+Lemma qforall_I s mu m Ψ ψ :
+  ptrue (phom M s (wpair mu m) (ptens_all (map reindex Ψ)) ψ) <->
+  ptrue (phom M s mu (ptens_all Ψ) (qforall s m ψ)).
+Proof. by rw ptens_all_reindex -qforall_adj. Qed.
+
+Lemma qexists_E s mu m Ψ ψ χ :
+  ptrue (phom M s (wpair mu m) (ptens_all (ψ :: map reindex Ψ)) (reindex χ))
+  <-> ptrue (phom M s mu (ptens_all (qexists s m ψ :: Ψ)) χ).
+Proof.
+suff -> : phom M s (wpair mu m) (ptens_all (ψ :: map reindex Ψ)) (reindex χ)
+    = phom M s mu (ptens_all (qexists s m ψ :: Ψ)) χ by [].
+transitivity
+    (phom M s (wpair mu m) ψ (reindex (fun x => ptens_all Ψ x ⊸ χ x))).
+  rw /phom; congr hmean; apply/funext => u.
+  by rw ptens_all_cons ptens_all_reindex /reindex /= pimp_tens.
+rw -qexists_adj /phom; congr hmean; apply/funext => x.
+by rw ptens_all_cons pimp_tens.
+Qed.
+
+(* The change of variables along id × g : X × Y -> X × Y', which pushes the
+   reference measure forward: ∃^s (y' ~ g_* m) ψ = ∃^s (y ~ m) ψ (g y). *)
+Lemma qexists_map (Y' : pseudoMetricType R) s (m : X -> WT W Y) (g : Y -o Y')
+    (ψ : X * Y' -> prop R) :
+  qexists s (fun x => wmap W g (m x)) ψ = qexists s m (fun u => ψ (u.1, g u.2)).
+Proof. by apply/funext => x; rw /qexists (wmean_map M s g (m x)). Qed.
+
+Lemma qforall_map (Y' : pseudoMetricType R) s (m : X -> WT W Y) (g : Y -o Y')
+    (ψ : X * Y' -> prop R) :
+  qforall s (fun x => wmap W g (m x)) ψ = qforall s m (fun u => ψ (u.1, g u.2)).
+Proof. by apply/funext => x; rw /qforall /hmean (wmean_map M s g (m x)). Qed.
+
+End kernel_product.
+
+End QuantAdjoint.
