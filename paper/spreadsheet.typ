@@ -1,8 +1,17 @@
+// Cheatsheet of the paper's formulas.
+//
+// Formulas shown here are variables defined next to their prose in a section file and
+// only imported here, so editing a section updates this sheet. Import them by name: a
+// glob import would also bring in plain names such as `abs` or `succ` (the typing rules
+// of calculus.typ), shadowing the math functions of the same name.
 
-// #import "lib.typ": *
-#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
-#import "@preview/curryst:0.6.0": prooftree, rule, rule-set
-#import "main.typ": *
+#import "common.typ": *
+#import "metric.typ": metric_space_tb
+#import "calculus.typ": (
+  term-syntax, types-syntax, typing-judg, ctx-judg, ctx-typing-rules, typing-term-rules,
+  judg-sem, sem-types, struct-func,
+)
+#import "logic.typ": prop-signature, prop-typing-rules, prop-sem
 
 // Shrink a diagram uniformly so it never exceeds the width of its table cell.
 #let fit-cell(body) = layout(size => {
