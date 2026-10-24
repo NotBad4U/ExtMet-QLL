@@ -24,7 +24,7 @@ The term $delta M$ denotes a distribution, and $M amp.inv_p N$ the convex sumof 
 The types of the calculus are defined by the grammar:
 
 #let types-syntax = $
-  A, B ::= & NN | 1 | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A
+  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A
 $
 
 #types-syntax
@@ -281,18 +281,18 @@ Each type is interprerted as an object in *CExtMet*:
   $
                              ⟦ NN ⟧ & ≜ NN \
                       ⟦ A times B ⟧ & ≜ ⟦ A ⟧ times ⟦ B ⟧ \
-    ⟦ A attach(⊗, bl: r, br: s) ψ ⟧ & ≜ r ⟦ A ⟧ ⊗ s ⟦ B ⟧ \
+    ⟦ A attach(⊗, bl: r, br: s) B ⟧ & ≜ r ⟦ A ⟧ ⊗ s ⟦ B ⟧ \
   $
   #colbreak()
   $
                               ⟦ 1 ⟧ & ≜ bold("1") \
                           ⟦ A + B ⟧ & ≜ ⟦ A ⟧ + ⟦ B ⟧ \
-    ⟦ φ attach(multimap, br: r) ψ ⟧ & ≜ r⟦ A ⟧ multimap ⟦ B ⟧ \
+    ⟦ A attach(multimap, br: r) B ⟧ & ≜ r⟦ A ⟧ multimap ⟦ B ⟧ \
   $
   #colbreak()
   $
                    ⟦ cal(W)A ⟧ & ≜ cal(W)⟦ A ⟧ \
-       ⟦ chevron.l chevron.r ⟧ & ≜ bold("1") \
+       ⟦ "unit" ⟧ & ≜ bold("1") \
     ⟦ Γ, x attach(:, tr: r) A⟧ & ≜ ⟦ Γ ⟧ times.o r⟦ A⟧
   $
 ]
