@@ -62,6 +62,7 @@
 // ---------------- local notation and helpers ----------------
 
 #let cext = $bold("CExtMet")$
+#let ext = $bold("ExtMet")$
 #let cmet = $bold("CMet")$
 #let PP = $bb(P)$
 
@@ -255,8 +256,13 @@ $
 
 == Quantitative Linear Logic (FQLL) in EMet
 
-- Truth values in $Omega :=  overline(RR)_+ = [0, oo]$ i.e. `Prop`
-- Interpretation of $x = y$ is $d(x,y)_Omega = e^(-d(x, y))$
+- Truth values in $Omega :=  overline(RR)_+ = [0, oo]$
+- $Omega$ is `Prop`
+- Interpretation of $x = y$ is
+  $
+    d_Omega : Omega arrow Omega arrow overline(RR)_+ \
+    d(x,y)_Omega  = e^(-d(x, y))
+  $
 - So $infinity$ is $top$, $0$ is $bot$
 - $phi tack.r psi$ means $phi <= psi$
 
@@ -309,9 +315,9 @@ $
 = The category #cext
 // =====================================================================
 
-== The category #cext
+== First, the Category #ext
 
-- Objects: *Complete* extended metric spaces
+- Objects: Extended metric spaces i.e $(X, d_X)$ with $X subset.eq overline(RR_+)$
 - Morphisms: Non-expansive maps
   $ d_Y (f(x), f(y)) <= d_X (x, y) $
 - Monoidal structure
@@ -321,6 +327,44 @@ $
     X multimap Y & = { f : X -> Y | f "non-expansive" } \
     d_(X multimap Y) (f, g) & = sup { d_Y (f(x), g(x)) | x in X }
   $
+
+#remark[
+  🔓 QLL $[0, oo]$, $=_epsilon$, \~ Leibniz equality, Simple Typed $lambda$-Calculus
+]
+
+== Example of #ext
+
+The simplest example: the *$oo$-discrete metric* on any set $X$
+#align(center, box(stroke: 0.6pt, inset: 8pt, $
+  d(x, y) = cases(0 & "if" x = y, oo & "if" x != y)
+$))
+For example, take $X = {a, b, c}$. Its distance matrix is:
+#align(center, table(
+  columns: 4,
+  align: center + horizon,
+  inset: (x: 10pt, y: 5pt),
+  stroke: (x, y) => (
+    left: if x == 1 { 0.6pt },
+    bottom: if y == 0 { 0.6pt },
+  ),
+  $d$, $a$, $b$, $c$,
+  $a$, $0$, $oo$, $oo$,
+  $b$, $oo$, $0$, $oo$,
+  $c$, $oo$, $oo$, $0$,
+))
+
+== The category #cext
+
+- Objects: complete #ext objects
+Complete: every Cauchy sequence converges, i.e.
+$
+  "if" d(x_m, x_n) -> 0 "as" m, n -> oo "then" x_n -> x "for some" x
+$
+- Morphisms: non-expansive maps
+
+#remark[
+  🔓 Banach fixpoint, recursion, induction
+]
 
 == Objects of #cext
 
@@ -405,46 +449,36 @@ $
 ]
 
 // =====================================================================
-= Probability via Wasserstein Monad
+= Metric Probability Space via Wasserstein Monad
 // =====================================================================
 
 
-== The Wasserstein monad
-
-- Let
-  $ cal(W)_p X = { mu | mu "Radon probability measure on" X }, quad p >= 1 $
-  with the Wasserstein distance $W_p$
-- Includes Dirac measures, finite measures, the uniform measure on $[0, 1]$, …
-- Unit $delta : X -> cal(W) X$ (Dirac), join by expectation, pushforward on maps
-- Scaling law: $cal(W)(r X) = r thin cal(W) X$ #rocq("wdist_scale")
-- Convex combination of measures, $mu amp.inv_p nu = p mu + (1 - p) nu$,
-  $ amp.inv_p : p dot cal(W) X times.o (1 - p) dot cal(W) X -> cal(W) X $
-
-== Wasserstein distance via transport plans
-
-#set text(size: 18pt)
-- A *plan* from $mu$ to $nu$ is a probability kernel $k$ with $nu = integral k(x) thin dif mu(x)$; its cost is an iterated integral, no product measure needed:
-  $ "cost"_p (mu, k) = (integral_mu integral_(k(x)) d(x, y)^p)^(1 \/ p), quad quad W_p^(->) (mu, nu) = inf_(k "plan") "cost"_p (mu, k) $
-- Plans compose by Kleisli composition, which gives the triangle inequality; $W_p$ symmetrises the two directions
-- Couplings $pi$ on $X times X$ with marginals $mu, nu$ give the usual $W_p (mu, nu) = inf_pi (integral d^p dif pi)^(1 \/ p)$
-#theorem[
-  On standard Borel spaces the plan and coupling definitions agree, by disintegration.
-  #rocq-tag("wassE")
-]
+== The Wasserstein monad $cal(W)X$
+Let $mu$ and $eta$ be Radon probability measure on $X$ of finite first moment.
+The Wasserstein distance is given by:
+$
+  cal(W) & : X arrow.r X arrow.r [0, oo]  \
+  cal(W)(mu,eta) & = inf_(gamma in C(mu,eta)) integral_(x,x' in X times X) d(x,x') space "d"gamma(x,x') \
+            & = inf_(gamma in C(mu,eta)) EE_(x,x' ~gamma) d(x,x')
+$
+We assign to $cal(W)X$ (probability monad) the Wasserstein metric. 
 
 == Interpolative barycentric algebras
 
-#set text(size: 19pt)
-#definition[
-  A (complete) interpolative barycentric algebra in #cext is a complete $X$ with non-expansive
-  $amp.inv_p : p X times.o (1 - p) X -> X$, $p in (0, 1)$, such that
-  $
-    x amp.inv_p x & = x & "(idem)" \
-    x amp.inv_p y & = y amp.inv_(1 - p) x & "(comm)" \
-    (x amp.inv_p y) amp.inv_q z & = x amp.inv_(p q) (y amp.inv_((q - p q) / (1 - p q)) z) quad & "(assoc)"
-  $
-]
 
+A (complete) interpolative barycentric algebra in #cext:
+
+Choice operator: $amp.inv_p : forall X, p X times.o (1 - p) X -> X$
+
+$
+  x amp.inv_p x & = x & "(idem)" \
+  x amp.inv_p y & = y amp.inv_(1 - p) x & "(comm)" \
+  (x amp.inv_p y) amp.inv_q z & = x amp.inv_(p q) (y amp.inv_((q - p q) / (1 - p q)) z) quad & "(assoc)"
+$
+
+#remark[
+  with $p, q in [0,1]$
+]
 
 #slide(title: [Interpolative barycentric algebras])[
   
@@ -531,7 +565,7 @@ $
   so that (FIX) with $r = 1 / 3$ gives $z tcol(1) PP ⊢ m : PP$: the process $m$ is non-expansive in $z$
 
 // =====================================================================
-= The logic
+= The internal quantitatice logic
 // =====================================================================
 
 == Prop in a glance
@@ -542,7 +576,7 @@ $
 - Where
   $
     a times.o b = a b quad (0 times.o oo = 0) quad quad a^* = 1 / a quad (0^* = oo) quad quad
-    a multimap b = a^* times.o^* b = sup { c | a times.o c <= b }
+    a multimap b = a^* times.o^* b
   $
 - $bot = 0$, $top = oo$, and $a$ is *true* iff $a >= 1$
 
