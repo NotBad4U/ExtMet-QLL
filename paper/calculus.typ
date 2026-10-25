@@ -200,7 +200,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 ))
 
 #let letalg = prooftree(rule(
-  name: [(LET)],
+  name: [(SAMPL)],
   $Γ, x tcol(r) A ⊢ t: E$,
   $Γ' ⊢ u : cal(W) A$,
   "E IB algebra",

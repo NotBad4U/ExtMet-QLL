@@ -493,7 +493,7 @@ $
 #set text(size: 19pt)
 - Judgement
 $
-  Γ tack M attach(:, tr: r) N
+  Γ tack M attach(:, tr: r) N quad quad Gamma ⧺ Gamma'
 $
 - Types
   #types-syntax
@@ -572,7 +572,7 @@ $
 
 #set text(size: 18pt)
 - A commutative quantale with an involution
-  $ prop = ([0, oo], <=, times.o, 1, (-)^*) $
+  $ prop = ([0, oo], <=, times.o, 1, (-)^*)$
 - Where
   $
     a times.o b = a b quad (0 times.o oo = 0) quad quad a^* = 1 / a quad (0^* = oo) quad quad
@@ -580,46 +580,26 @@ $
   $
 - $bot = 0$, $top = oo$, and $a$ is *true* iff $a >= 1$
 
+#pause
+
 #remark[
-  Via $-log$, this is the extended Lawvere quantale $([-oo, oo], >=, +, 0)$
+We can also define
+  $
+    prop_plus.o = ([0, oo], <=, times.o, 0, (-)^*)
+  $
+  with $d_prop_plus.o (a, b) = |log a - log b|$ and Napierian duality $prop_plus.o ⟷ prop$
 ]
 
-// #pause
-// - Log metric $d_prop (a, b) = |log a - log b|$: the operations are non-expansive!
-//   $
-//     times.o, multimap : prop times.o prop -> prop quad quad (-)^r : r dot prop -> prop quad (r in [0, oo]) quad quad (-)^* "an isometry"
-//   $
-// - Soft sums for $s in [0, oo]$, with max and min at $s = oo$:
-//   $ a plus.o^s b = (a^s + b^s)^(1 \/ s), quad quad a plus.o^(-s) b = (a^(-s) + b^(-s))^(-1 \/ s) $
+== QLL sensitivity
 
-== Predicates as terms
+We need to track sensitivity for 
+
+== Typing rule for Prop operator
 
 #set text(size: 17pt)
 Since $prop$ is an object of #cext, predicates track sensitivity exactly like terms.
 #v(0.3em)
 #align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, prop-eq, prop-tens, prop-imp, prop-scale, prop-dual, prop-sum, prop-all, prop-ex))
-
-== Interpretation of predicates
-
-#set text(size: 18pt)
-- Equality is the distance, pushed through $e^(-(-))$:
-  $ ⟦ t =_A u ⟧ ≜ e^(-d_(⟦ A ⟧)) ∘ (⟦ t ⟧ times.o ⟦ u ⟧) $
-#align(center, diagram(
-  spacing: 3.6em,
-  node((0, 0), $⟦ A ⟧ times.o ⟦ A ⟧$),
-  node((1, 0), $([0, oo], |a - b|)$),
-  node((2, 0), $prop$),
-  edge((0, 0), (1, 0), $d_(⟦ A ⟧)$, "->"),
-  edge((1, 0), (2, 0), $e^(-(-))$, "->"),
-  edge((0, 0), (2, 0), $e^(-d_(⟦ A ⟧))$, "->", bend: 42deg),
-))
-#v(0.4em)
-- $⟦ phi times.o psi ⟧$, $⟦ phi multimap psi ⟧$, $⟦ phi^* ⟧$ pointwise, and $⟦ r phi ⟧ = ⟦ phi ⟧^r$
-- The quantifiers are means over the reference measure $m : cal(W) A$:
-  $
-    ⟦ ex(s) (x tilde m). phi ⟧ & = (integral ⟦ phi ⟧ (gamma, x)^s dif ⟦ m ⟧(x))^(1 \/ s) quad quad
-    ⟦ fa(s) (x tilde m). phi ⟧ & = (integral ⟦ phi ⟧ (gamma, x)^(-s) dif ⟦ m ⟧(x))^(-1 \/ s)
-  $
 
 == Soft quantifiers are means
 
@@ -631,160 +611,11 @@ Since $prop$ is an object of #cext, predicates track sensitivity exactly like te
   $
 - $s = oo$: $sup$ and $inf$ over the support of $m$, the hard quantifiers
 - $s = 1$: the expectation $EE_(x tilde m) [phi]$ and its harmonic mean
-#pause
-- Laws of the means used by the logic: constants, monotonicity, change of variables along a pushforward,
-  Fubini for the join, and homogeneity #rocq("wmeans")
-  $ ex(s) (x tilde m). (a times.o phi) = a times.o ex(s) (x tilde m). phi $
-- De Morgan: $(fa(s) (x tilde m). phi)^* = ex(s) (x tilde m). phi^*$ #rocq("psem_dual_forall", "psem_dual_exists")
 
 == The graded entailment
 
-#set text(size: 16pt)
 #align(center, box(stroke: .5pt, inset: 6pt)[$ Delta thin | thin Psi ent(p) phi $])
-- $Delta$ a discrete typing context, $Psi$ a list of predicates, $p in [0, oo]$ the *softness*
-- Valid under a reference measure $mu$ on $⟦ Delta ⟧$ when the harmonic $p$-mean of the implication is true:
-  $ 1 <= fa(p) (gamma tilde mu). ((times.o.big Psi) multimap phi) $
-- $p = oo$ is the hard entailment on the support of $mu$, smaller $p$ is softer
-- Grades form the monoid $([0, oo], plus.o^*, oo)$ with the harmonic sum $1 / (p plus.o^* q) = 1 / p + 1 / q$: Hölder conjugacy
-#v(0.3em)
-#align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, l-ass, l-cut, l-relax, l-weak))
 
 == Connectives and quantifiers
 
-#set text(size: 16pt)
-Cut-like rules accumulate softness by harmonic sum; introducing $multimap$ leaves the grade untouched.
-#v(0.3em)
 #align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, l-tensR, l-tensL, l-impR, l-impL, l-eqI, l-allI, l-exE))
-
-== Equality
-
-#set text(size: 18pt)
-#theorem(title: [Equality is an equivalence])[
-  For $⟦ t =_A u ⟧ = e^(-d(⟦ t ⟧, ⟦ u ⟧))$:
-  - reflexive, $t =_A t$ is $1$; symmetric; transitive,
-    $(t =_A u) times.o (u =_A v) ⊑ (t =_A v)$ is the triangle inequality
-  - true iff $⟦ t ⟧ = ⟦ u ⟧$, and $=_A : A times.o A -> prop$ is non-expansive
-  - substitutive: for $g : A -> prop$ non-expansive for the log metric,
-    $ (x =_A y) times.o g(x) ⊑ g(y) $
-  #rocq-tag("peq_refl", "peq_sym", "peq_trans", "peq_trueP", "peq_edist_le", "peq_subst")
-]
-
-== Quantifiers are graded adjoints to reindexing
-
-#set text(size: 18pt)
-- Predicates on $X$ form a $prop$-enriched category: the hom at grade $s$ under $mu : cal(W) X$ is
-  $ [phi, psi]^s_mu ≜ fa(s) (x tilde mu). (phi(x) multimap psi(x)), $
-  whose truth is the validity of $phi ent(s) psi$
-- Along $pi : X times Y -> X$: reindexing $pi^* phi = phi ∘ pi$, and for a kernel $m : X multimap cal(W) Y$
-  $ exists^s_m psi (x) = ex(s) (y tilde m(x)). psi(x, y), quad quad forall^s_m psi (x) = fa(s) (y tilde m(x)). psi(x, y) $
-  with the kernel product $mu ⋈ m$ as reference measure on $X times Y$
-#theorem(title: [$exists^s ⊣ pi^* ⊣ forall^s$ at every grade $s$])[
-  $ [exists^s_m psi, phi]_mu = [psi, pi^* phi]_(mu ⋈ m) quad quad quad [phi, forall^s_m psi]_mu = [pi^* phi, psi]_(mu ⋈ m) $
-  #rocq-tag("qexists_adj", "qforall_adj")
-]
-
-#slide(title: [Consequences of the adjunctions], composer: (3fr, 2fr))[
-  #set text(size: 17pt)
-  - The rules ($forall^s$-I) and ($exists^s$-E) are invertible, with unit and counit
-    $ psi ent(s) pi^* exists^s psi quad quad quad pi^* forall^s psi ent(s) psi $
-  - Frobenius reciprocity, the homogeneity of the means
-    $ exists^s (psi times.o pi^* phi) = exists^s psi times.o phi quad quad quad forall^s (pi^* phi multimap psi) = phi multimap forall^s psi $
-  - De Morgan: each quantifier is the dual of the other
-    $ (forall^s psi)^* = exists^s psi^* $
-  #rocq("qforall_I", "qexists_E", "qexists_frobenius", "qforall_imp", "qforall_dual")
-][
-  #set text(size: 17pt)
-  #align(center, diagram(
-    spacing: (3.2em, 2.6em),
-    node((0, 0), $X' times Y$),
-    node((1, 0), $X times Y$),
-    node((0, 1), $X'$),
-    node((1, 1), $X$),
-    edge((0, 0), (1, 0), $f times "id"$, "->"),
-    edge((0, 0), (0, 1), $pi'$, "->", label-side: left),
-    edge((1, 0), (1, 1), $pi$, "->"),
-    edge((0, 1), (1, 1), $f$, "->", label-side: right),
-  ))
-  - Beck–Chevalley for a base change $f : X' -> X$, on the nose:
-    $ f^* ∘ exists^s_m = exists^s_(m ∘ f) ∘ (f times "id")^* $
-    #rocq("qexists_bc", "qforall_bc")
-]
-
-// =====================================================================
-= Examples
-// =====================================================================
-
-// == Example of equality
-
-// #set text(size: 19pt)
-// #align(center, markov)
-// $
-//   m & = (a, space delta m amp.inv_(1 \/ 3) (delta z amp.inv_(1 \/ 4) delta z)) \
-//   n & = (a, space delta n amp.inv_(1 \/ 3) (delta n amp.inv_(1 \/ 4) delta z))
-// $
-// - Will show
-//   $ 1 / 4 (z = n) ⊑ (m = n), quad "i.e." quad d(m, n) <= 1 / 4 dot d(z, n) $
-// - In #cmet the right-hand side is bounded by $1$; in #cext it stays a bound *relative* to $z$
-
-// == Example of equality
-
-// #set text(size: 17pt)
-// - *Unfolding.* $"fix" x. t$ is a fixed point of $t$, so $m$ and $n$ are their right-hand sides #rocq("sem_fixP")
-// - *Congruence.* Comparing the two pairs componentwise, with $delta z = delta z amp.inv_(1 \/ 4) delta z$:
-//   $ 1 / 3 (m = n) times.o 2 / 3 (1 / 4 (z = n) times.o 3 / 4 (z = z)) ⊑ (m = n) $
-//   and since $(z = z) = 1$ and $r(s phi) = (r s) phi$,
-//   $ 1 / 3 (m = n) times.o 1 / 6 (z = n) ⊑ (m = n), quad "i.e." quad d(m, n) <= 1 / 3 d(m, n) + 1 / 6 d(z, n) $
-// #pause
-// - *Banach estimate.* If $a = f(a)$ and $b = g(b)$ are in the same galaxy and $f$ is an $r$-contraction, then
-//   $(1 - r) dot d(a, b) <= d(f(b), g(b))$ #rocq("fixed_point_edist_le")
-// - With $r = 1 / 3$: $thin 2 / 3 d(m, n) <= 1 / 6 d(z, n)$, that is $1 / 4 (z = n) ⊑ (m = n)$ #h(1fr) $square$
-// - #remark[The last step is the semantic counterpart of guarded recursion for propositions: it needs $d(m, n) < oo$.]
-
-// == Example: neural networks as terms
-
-// #set text(size: 18pt)
-// - Any object of #cext is a base type; write $RR^n$ with its $ell_2$ metric. A network is built from
-//   constants whose sensitivity is their *Lipschitz constant*:
-//   $
-//     "aff"_(W, b) : RR^n attach(multimap, br: ||W||) RR^m quad quad quad
-//     "relu" : RR^m attach(multimap, br: 1) RR^m quad quad quad
-//     sigma : RR attach(multimap, br: 1 \/ 4) RR
-//   $
-// - Composition *multiplies* sensitivities, by (APP):
-// #let comp-deriv = prooftree(rule(
-//   name: [(ABS)],
-//   rule(
-//     name: [(APP)],
-//     $emptyctx ⊢ g : B attach(multimap, br: s) C$,
-//     rule(
-//       name: [(APP)],
-//       $emptyctx ⊢ f : A attach(multimap, br: r) B$,
-//       rule(name: [(VAR)], $x tcol(1) A ⊢ x : A$),
-//       $x tcol(r) A ⊢ f space x : B$,
-//     ),
-//     $x tcol(s r) A ⊢ g space (f space x) : C$,
-//   ),
-//   $emptyctx ⊢ lambda x. g space (f space x) : A attach(multimap, br: s r) C$,
-// ))
-// #align(center, text(size: 15pt, comp-deriv))
-// - A two-layer perceptron $cal(N) := lambda x. "aff"_(W_2, b_2) ("relu" ("aff"_(W_1, b_1) space x))$ is typed
-//   $ emptyctx ⊢ cal(N) : RR^n attach(multimap, br: r) RR^k, quad r = ||W_1|| dot ||W_2|| $
-//   the product-of-norms Lipschitz bound of robustness certification, read off the derivation
-
-// == Example: robustness as a predicate
-
-// #set text(size: 17pt)
-// #definition(title: [Quantitative robustness])[
-//   For $cal(N) : RR^n multimap RR^k$ and a tolerance $r$,
-//   $ "Rob"_r (cal(N), v) ::= r (x =_(RR^n) v) multimap (cal(N) space x =_(RR^k) cal(N) space v) $
-//   evaluates to $e^(r dot d(x, v) - d(cal(N) x, cal(N) v))$: true at $x$ iff $d(cal(N) x, cal(N) v) <= r dot d(x, v)$.
-// ]
-// #proposition(title: [Robustness for free from the sensitivity type])[
-//   If $emptyctx ⊢ cal(N) : RR^n attach(multimap, br: r) RR^k$, then for every $v$ and reference measure $m$
-//   $ v : RR^n thin | thin top ent(oo) fa(oo) (x tilde m). "Rob"_r (cal(N), v) $
-// ]
-// #pause
-// - $r = 1$: *individual fairness*, similar inputs get similar outputs, is non-expansiveness
-// - A softer grade over a data distribution gives an *average-case* certificate,
-//   #box($"AvgRob"^s_r ::= fa(s) (x tilde m). "Rob"_r (cal(N), v)$); by (RELAX) the hard certificate entails every softer one
-// - A stochastic classifier $"net" : RR^n attach(multimap, br: r) cal(W) bold(2)$ is robust in the Kantorovich distance
