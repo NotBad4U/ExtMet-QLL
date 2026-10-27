@@ -10,7 +10,8 @@ From mathcomp Require Import boolp classical_sets reals constructive_ereal ereal
 From mathcomp Require Import topology_structure uniform_structure.
 From mathcomp Require Import pseudometric_structure separation_axioms urysohn.
 From mathcomp Require Import sequences exp.
-From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
+From ExtMetQLL Require Import analysis_extras extmet cextmet propmetric syntax.
+From ExtMetQLL Require Import semantics.
 
 (**md**************************************************************************)
 (* # The quantitative logic                                                   *)
@@ -22,13 +23,14 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (* for the log metric) and of the quantifiers: at every grade s they are the *)
 (* Prop-enriched adjoints of the reindexing along a projection (Lawvere),    *)
 (* with Frobenius reciprocity and the Beck-Chevalley condition (Section      *)
-(* QuantAdjoint).  The pseudometric structure of Prop, the non-expansiveness *)
+(* QuantAdjoint), and they are non-expansive in the predicate for the sup of *)
+(* the log metric.  Their non-expansiveness in the reference measure, that   *)
 (* of the connectives and of ⟦φ⟧, and the soundness of the entailment are    *)
 (* left as TODOs.                                                            *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*            prop R == the truth values [0, +oo], the carrier of Ω with the  *)
-(*                      log metric prop_dist; ptrue a == 1 <= a and         *)
+(*            prop R == the truth values [0, +oo] with the log metric       *)
+(*                      prop_dist (propmetric.v); ptrue a == 1 <= a and     *)
 (*                      a ⊑ b == a <= b, the entailment of truth values      *)
 (*   ptop, pbot, pone == ⊤ = +oo, ⊥ = 0 and the unit 1                       *)
 (*         ptens a b == a ⊗ b = a b with 0 ⊗ +oo = 0                         *)
@@ -48,14 +50,17 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (*                      commutative, associative with unit 1, (a ⊗ b)* =    *)
 (*                      a* ⊗* b*, a ⊸ b = (a ⊗ b* )*, (a ⊗ b) ⊸ c =          *)
 (*                      a ⊸ (b ⊸ c), a ⊸ a true                              *)
-(*            pred R == the predicates φ, ψ ::= ⊤ | ⊥ | t =[ A ] u | φ ⊗ ψ   *)
+(*            pred R == the predicates φ, ψ ::= t | ⊤ | ⊥ | t =[ A ] u | φ ⊗ ψ *)
+(*                      (t a term of type Prop, p_atom t)                  *)
 (*                      | φ ⅋ ψ (⊗* ) | φ ⊸ ψ | r *: φ | φ ^* | φ ∨[ s ] ψ    *)
-(*                      | φ ∧[ s ] ψ | ∀[ s ] m , φ | ∃[ s ] m , φ            *)
-(*                      (pred_scope, %pred; the quantified variable is #0)   *)
+(*                      | φ ∧[ s ] ψ | ∀[ s ] m , φ | ∃[ s ] m , φ           *)
+(*                      (pred_scope, %pred; the quantified variable is #0,   *)
+(*                      bound at the softness s that the quantifier records) *)
 (*   tm_shift k t, pred_shift k φ == the de Bruijn lifting of the variables  *)
 (*                      >= k                                                  *)
 (*       Γ ⊩[ σ ] φ == the predicate typing ptyped Γ σ φ (Γ ⊢ φ : Prop)      *)
-(*        discrete Δ == the environment of the discrete context Δ (all +oo)  *)
+(*        discrete Δ == the environment of the discrete context Δ: every     *)
+(*                      variable at sensitivity +oo and at softness +oo      *)
 (*   Δ ∣ Ψ ⊢[ p ] φ == the graded entailment entails Δ Ψ p φ; logical        *)
 (*                      contexts are lists, last formula first               *)
 (*          wmeans W == the s-means wmean s mu g = (∫ g^s dmu)^(1/s) of the  *)
@@ -64,6 +69,9 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet syntax semantics.
 (*                      wmean_le (monotone), wmean_tens (homogeneous),      *)
 (*                      wmean_map (change of variables), wmean_join (Fubini) *)
 (*     hmean M s mu g == the harmonic s-mean (wmean s mu g* )*               *)
+(*   wmean_ne, hmean_ne == the means are non-expansive in the predicate: a  *)
+(*                      pointwise log distance <= e bounds that of the means *)
+(*   qexists_ne, qforall_ne == the same for the quantifiers along π         *)
 (*   phom M s mu φ ψ == [φ, ψ]^s_mu = ∀^s_(x ~ mu) (φ x ⊸ ψ x), the Prop-    *)
 (*                      enriched hom of the predicates on T at grade s       *)
 (*       psem W M d == ⟦Γ ⊩ φ⟧ : ⟦Γ⟧ -> Prop, by recursion on d              *)
@@ -102,24 +110,11 @@ Local Open Scope senv_scope.
 
 (** * The truth values *)
 
-(* Prop = [0, +oo]: the carrier of the sensitivities Ω (the paper's Ω), as a
-   separate type since it carries the log metric. *)
-Definition prop (R : realType) : Type := {nonneg \bar R}.
+(* Prop = [0, +oo] and its log metric are defined in propmetric.v. *)
 
 Section truth_values.
 Context {R : realType}.
 Implicit Types (a b : prop R) (x d : \bar R).
-
-(* Truth values from non-negative extended reals. *)
-Lemma mkprop_subproof x : 0 <= x ->
-  Itv.spec (@ext_num_sem R) (Itv.Real `[0, +oo[%R) x.
-Proof.
-by move=> x0; rw /Itv.spec /= /ext_num_sem /= /Order.comparable in_itv /= x0.
-Qed.
-
-Definition mkprop x (x0 : 0 <= x) : prop R := Itv.mk (mkprop_subproof x0).
-
-Lemma mkpropE x (x0 : 0 <= x) : (mkprop x0)%:num = x. Proof. by []. Qed.
 
 Definition ptop : prop R := (+oo : \bar R)%:nng.
 Definition pbot : prop R := (0%R%:E)%:nng.
@@ -132,16 +127,7 @@ Definition ple a b : Prop := a%:num <= b%:num.
 (* a ⊗ b = a b, with 0 ⊗ +oo = 0 (the convention of mule). *)
 Definition ptens a b : prop R := (a%:num * b%:num)%:nng.
 
-(* The involution a* = 1 / a, with 0* = +oo and (+oo)* = 0. *)
-Definition estar x : \bar R :=
-  if x == 0 then +oo else if x == +oo then 0 else ((fine x)^-1)%:E.
-
-Lemma estar_ge0 x : 0 <= x -> 0 <= estar x.
-Proof.
-rw /estar; case: ifP => // _; case: ifP => // _ x0.
-by rw lee_fin invr_ge0 fine_ge0.
-Qed.
-
+(* The involution a* = 1 / a (estar, in propmetric.v). *)
 Definition pstar a : prop R := mkprop (estar_ge0 (ge0e a)).
 
 (* a ⊗* b = a b with 0 ⊗* +oo = +oo, the dual of ⊗. *)
@@ -226,21 +212,12 @@ case: d d' => [r||] [r'||] /= => [_ _|_ _|//|_ _|_ _|//|//|//|//].
 - by rw mule0.
 Qed.
 
-(* The log metric d(a, b) = |ln a - ln b|, the crisp values 0 and +oo at
-   infinite distance from the soft ones.  TODO: the pseudometric instance of
-   prop R and the non-expansiveness of the connectives. *)
-Definition prop_dist a b : \bar R :=
-  if a == b then 0 else
-  if (0 < a%:num < +oo) && (0 < b%:num < +oo) then
-    `|ln (fine a%:num) - ln (fine b%:num)|%:E
-  else +oo.
+(* TODO: the non-expansiveness of the connectives for the log metric. *)
 
 (* The harmonic sum of grades p ⊕* q = (p^-1 + q^-1)^-1, with unit +oo. *)
 Definition hsum (p q : Ω R) : Ω R := pstar (sens_add (pstar p) (pstar q)).
 
 End truth_values.
-
-Arguments prop : clear implicits.
 
 Declare Scope prop_scope.
 Delimit Scope prop_scope with prop.
@@ -358,6 +335,30 @@ Lemma pimp_refl a : ptrue (a ⊸ a).
 Proof. by rw /ptrue pimpE pstarE ptensE pstarE; exact: estar_self (ge0e a). Qed.
 
 End prop_algebra.
+
+(* The log metric and the algebra of Prop: a log distance at most e is the
+   two-sided bound a ⊑ e^e ⊗ b and b ⊑ e^e ⊗ a (prop_dist_le_mul,
+   prop_dist_le_of_mul, propmetric.v), and the involution is an isometry. *)
+Section prop_metric.
+Context {R : realType}.
+Implicit Types (a b : prop R).
+Local Open Scope prop_scope.
+
+Lemma prop_distC a b : prop_dist a b = prop_dist b a.
+Proof. by rw -!prop_edistE edist_sym. Qed.
+
+Lemma pexp_ge0 (e : R) : (0 : \bar R) <= (expR e)%:E.
+Proof. by rw lee_fin expR_ge0. Qed.
+
+(* e^e as a truth value. *)
+Definition pexp (e : R) : prop R := mkprop (pexp_ge0 e).
+
+Lemma pexpE (e : R) : (pexp e)%:num = (expR e)%:E. Proof. by []. Qed.
+
+Lemma prop_dist_pstar a b : prop_dist a^* b^* = prop_dist a b.
+Proof. exact: prop_dist_estar. Qed.
+
+End prop_metric.
 
 (** * Equality is an equivalence *)
 
@@ -519,6 +520,7 @@ Context {R : realType}.
 (* The predicates in context; the variable of a quantifier is #0 in its body
    and the reference measure m lives in the enclosing context. *)
 Inductive pred : Type :=
+| p_atom of tm R                      (* t : Prop used as a predicate *)
 | p_top                               (* ⊤ *)
 | p_bot                               (* ⊥ *)
 | p_eq of ty R & tm R & tm R          (* t =_A u *)
@@ -560,6 +562,7 @@ Fixpoint tm_shift (k : nat) (t : tm R) : tm R :=
 
 Fixpoint pred_shift (k : nat) (φ : pred) : pred :=
   match φ with
+  | p_atom t => p_atom (tm_shift k t)
   | p_top => p_top
   | p_bot => p_bot
   | p_eq A t u => p_eq A (tm_shift k t) (tm_shift k u)
@@ -574,8 +577,11 @@ Fixpoint pred_shift (k : nat) (φ : pred) : pred :=
   | p_exists s m φ => p_exists s (tm_shift k m) (pred_shift k.+1 φ)
   end.
 
-(* The environment of a discrete context: every variable at sensitivity +oo. *)
-Definition discrete (Δ : seq (ty R)) : senv R := nseq (size Δ) sensy.
+(* The environment of a discrete context: every variable at sensitivity +oo
+   (the discrete metric) and at softness +oo (hard, the grade of (Ass) and
+   (=I)); see the entailment below. *)
+Definition discrete (Δ : seq (ty R)) : senv R :=
+  nseq (size Δ) (CEntry sensy sensy).
 
 End predicates.
 
@@ -615,9 +621,20 @@ Implicit Types (Γ : seq (ty R)) (σ τ : senv R) (t u m : tm R) (A : ty R)
   (φ ψ : pred R) (r s : Ω R).
 
 (* Γ ⊢ φ : Prop: predicates track sensitivity like terms, the tensor-like
-   connectives sum their contexts and a quantifier binds its variable at its
-   grade s. *)
+   connectives sum their contexts.  A quantifier ∀^s (x ~ m). φ binds the
+   variable x :^r_s A of its body and records its softness s, the exponent
+   of the mean that interprets it: the softness changes the value of the
+   quantifier, so it must be part of the formula once x has left the
+   context.  The sensitivity r is not recorded: it only changes the metric
+   the body is read at, not its values (psem does not depend on it), and it
+   is absorbed by the context of the reference measure m, scaled by r as in
+   the rule (Let) of the terms (r W A = W (r A)). *)
 Inductive ptyped : seq (ty R) -> senv R -> pred R -> Type :=
+| ptyped_atom Γ σ t :
+    Γ ⊢[ σ ] t : ty_prop ->
+    (*———————————————————————————— (P-atom) *)
+    Γ ⊩[ σ ] p_atom t
+
 | ptyped_top Γ σ :
     size σ = size Γ ->
     (*———————————————————————————— (⊤ᵢ) *)
@@ -674,17 +691,17 @@ Inductive ptyped : seq (ty R) -> senv R -> pred R -> Type :=
     (*———————————————————————————— (⊕⁻ˢ) *)
     Γ ⊩[ σ ] φ ∧[s] ψ
 
-| ptyped_forall Γ σ τ φ m A s :
-    A :: Γ ⊩[ s :: σ ] φ ->
+| ptyped_forall Γ σ τ φ m A r s :
+    A :: Γ ⊩[ CEntry r s :: σ ] φ ->
     Γ ⊢[ τ ] m : 𝕎 A ->
     (*———————————————————————————— (∀ˢᵢ) *)
-    Γ ⊩[ σ ⧺ τ ] ∀[s] m , φ
+    Γ ⊩[ σ ⧺ r *: τ ] ∀[s] m , φ
 
-| ptyped_exists Γ σ τ φ m A s :
-    A :: Γ ⊩[ s :: σ ] φ ->
+| ptyped_exists Γ σ τ φ m A r s :
+    A :: Γ ⊩[ CEntry r s :: σ ] φ ->
     Γ ⊢[ τ ] m : 𝕎 A ->
     (*———————————————————————————— (∃ˢᵢ) *)
-    Γ ⊩[ σ ⧺ τ ] ∃[s] m , φ
+    Γ ⊩[ σ ⧺ r *: τ ] ∃[s] m , φ
 where "Γ ⊩[ σ ] φ" := (ptyped Γ σ φ).
 
 End predicate_typing.
@@ -704,8 +721,15 @@ Implicit Types (Δ : seq (ty R)) (Ψ Φ : seq (pred R)) (φ ψ χ : pred R)
 
 (* Δ ∣ Ψ ⊢_p φ: Δ is a discrete typing context, Ψ the logical context (a
    list, last formula first), p in [0, +oo] the softness grade, with unit +oo
-   and composition the harmonic sum under cut.  The quantifier rules shift
-   the formulas that must not mention the bound variable. *)
+   and composition the harmonic sum under cut.  The grade is the softness of
+   the judgement as a whole, that is the common softness of the variables of
+   Δ: valid averages over ⟦Δ⟧ at the single exponent p, and the graded
+   adjunctions (qforall_adj, qexists_adj) split such a mean along the last
+   variable at the same exponent only.  Accordingly the rules (∀ˢ-I) and
+   (∃ˢ-E) bind their variable at the softness s of the judgement, which is
+   the softness the quantifier records (ptyped_forall, ptyped_exists).  The
+   quantifier rules shift the formulas that must not mention the bound
+   variable. *)
 Inductive entails : seq (ty R) -> seq (pred R) -> Ω R -> pred R -> Type :=
 | ent_ass Δ Ψ φ :
     (*———————————————————————————— (Ass) *)
@@ -792,8 +816,10 @@ Notation "Δ ∣ Ψ ⊢[ p ] φ" := (entails Δ Ψ p φ) : type_scope.
    laws of the means that the adjunctions of the quantifiers use: the mean
    of a constant (m is a probability), monotonicity, homogeneity in ⊗ (an
    s-mean commutes with the scaling by a constant), the change of variables
-   along a pushforward and the iterated means of a join (Fubini).  TODO:
-   non-expansiveness in g (sup-log metric, every s) and in m (Kantorovich),
+   along a pushforward and the iterated means of a join (Fubini).  The
+   non-expansiveness in g (sup-log metric, every s) follows from
+   monotonicity and homogeneity (wmean_ne).  TODO: the non-expansiveness in
+   m, which fails for the Kantorovich distance at s > 0 (it holds for W_oo),
    and the Hölder inequality of the cut. *)
 Unset Implicit Arguments.
 
@@ -842,6 +868,7 @@ Definition hmean (T : Type) (s : Ω R) (mu : WT W T) (g : T -> prop R)
    non-expansiveness for the log metric. *)
 Fixpoint psem Γ σ φ (d : Γ ⊩[ σ ] φ) : ctxC W Γ σ -> prop R :=
   match d in ptyped Γ σ φ return ctxC W Γ σ -> prop R with
+  | ptyped_atom Γ σ t d => fun γ => sem W d γ
   | ptyped_top _ _ _ => fun _ => ⊤
   | ptyped_bot _ _ _ => fun _ => ⊥
   | ptyped_eq Γ σ τ t u A d1 d2 =>
@@ -853,9 +880,9 @@ Fixpoint psem Γ σ φ (d : Γ ⊩[ σ ] φ) : ctxC W Γ σ -> prop R :=
   | ptyped_dual Γ σ φ d => fun γ => (psem d γ)^*
   | ptyped_or Γ σ φ ψ s d1 d2 => fun γ => psem d1 γ ∨[s] psem d2 γ
   | ptyped_and Γ σ φ ψ s d1 d2 => fun γ => psem d1 γ ∧[s] psem d2 γ
-  | ptyped_forall Γ σ τ φ m A s dφ dm =>
+  | ptyped_forall Γ σ τ φ m A r s dφ dm =>
     fun γ => hmean s (sem W dm γ) (fun a : sem_ty W A => psem dφ (γ, a))
-  | ptyped_exists Γ σ τ φ m A s dφ dm =>
+  | ptyped_exists Γ σ τ φ m A r s dφ dm =>
     fun γ => wmean M s (sem W dm γ) (fun a : sem_ty W A => psem dφ (γ, a))
   end.
 
@@ -885,14 +912,14 @@ Proof. exact: peq_trans. Qed.
 (* De Morgan for the predicates: ⟦(∀^s (x ~ m). φ)*⟧ = ⟦∃^s (x ~ m). φ*⟧ and
    ⟦(∃^s (x ~ m). φ)*⟧ = ⟦∀^s (x ~ m). φ*⟧, the involution exchanging the
    s-mean and the harmonic s-mean. *)
-Lemma psem_dual_forall Γ σ τ φ m A s (dφ : A :: Γ ⊩[ s :: σ ] φ)
-    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ τ)) :
+Lemma psem_dual_forall Γ σ τ φ m A r s (dφ : A :: Γ ⊩[ CEntry r s :: σ ] φ)
+    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ r *: τ)) :
   psem (ptyped_dual (ptyped_forall dφ dm)) γ =
   psem (ptyped_exists (ptyped_dual dφ) dm) γ.
 Proof. by rw /= /hmean pstarK. Qed.
 
-Lemma psem_dual_exists Γ σ τ φ m A s (dφ : A :: Γ ⊩[ s :: σ ] φ)
-    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ τ)) :
+Lemma psem_dual_exists Γ σ τ φ m A r s (dφ : A :: Γ ⊩[ CEntry r s :: σ ] φ)
+    (dm : Γ ⊢[ τ ] m : 𝕎 A) (γ : ctxC W Γ (σ ⧺ r *: τ)) :
   psem (ptyped_dual (ptyped_exists dφ dm)) γ =
   psem (ptyped_forall (ptyped_dual dφ) dm) γ.
 Proof.
@@ -995,6 +1022,35 @@ Proof. by rw /hmean pstarK. Qed.
 Lemma wmean_dual s mu g : (wmean M s mu g)^* = hmean M s mu (fun x => (g x)^*).
 Proof. by rw /hmean; congr pstar; congr wmean; apply/funext => x; rw pstarK. Qed.
 
+(* The means are non-expansive in the predicate, for the sup of the log
+   metric, at every grade s: by monotonicity and homogeneity in ⊗ (the
+   s-mean), and through the involution (the harmonic s-mean). *)
+Lemma wmean_ne s mu g h (e : \bar R) : 0 <= e ->
+  (forall x, prop_dist (g x) (h x) <= e) ->
+  prop_dist (wmean M s mu g) (wmean M s mu h) <= e.
+Proof.
+case: e => [e||] e0 gh.
+- rw lee_fin in e0.
+  have hle g' h' : (forall x, prop_dist (g' x) (h' x) <= e%:E) ->
+      wmean M s mu g' ⊑ pexp e ⊗ wmean M s mu h'.
+    move=> gh'; rw -wmean_tens; apply: wmean_le => x.
+    by rw /ple ptensE pexpE; exact: prop_dist_le_mul (gh' x).
+  have hg x : prop_dist (h x) (g x) <= e%:E by rw prop_distC; exact: gh.
+  apply: prop_dist_le_of_mul e0 _ _.
+    by have := hle g h gh; rw /ple ptensE pexpE.
+  by have := hle h g hg; rw /ple ptensE pexpE.
+- exact: leey.
+- by rw leeNy_eq in e0.
+Qed.
+
+Lemma hmean_ne s mu g h (e : \bar R) : 0 <= e ->
+  (forall x, prop_dist (g x) (h x) <= e) ->
+  prop_dist (hmean M s mu g) (hmean M s mu h) <= e.
+Proof.
+move=> e0 gh; rw /hmean prop_dist_pstar; apply: wmean_ne e0 _ => x.
+by rw prop_dist_pstar; exact: gh.
+Qed.
+
 End means.
 
 (* The reindexing and the quantifiers along π : X × Y -> X, which only need
@@ -1072,6 +1128,18 @@ Proof. by rw -qforall_dual; apply/funext => x /=; rw pstarK. Qed.
 Lemma qexistsE s m ψ :
   qexists s m ψ = fun x => (qforall s m (fun u => (ψ u)^*) x)^*.
 Proof. by rw -qexists_dual; apply/funext => x /=; rw pstarK. Qed.
+
+(* The quantifiers are non-expansive in the predicate, for the sup of the
+   log metric. *)
+Lemma qexists_ne s m ψ ψ' (e : \bar R) : 0 <= e ->
+  (forall u, prop_dist (ψ u) (ψ' u) <= e) ->
+  forall x, prop_dist (qexists s m ψ x) (qexists s m ψ' x) <= e.
+Proof. by move=> e0 h x; apply: wmean_ne e0 _ => y; exact: h. Qed.
+
+Lemma qforall_ne s m ψ ψ' (e : \bar R) : 0 <= e ->
+  (forall u, prop_dist (ψ u) (ψ' u) <= e) ->
+  forall x, prop_dist (qforall s m ψ x) (qforall s m ψ' x) <= e.
+Proof. by move=> e0 h x; apply: hmean_ne e0 _ => y; exact: h. Qed.
 
 End quantifiers.
 

@@ -617,4 +617,16 @@ rw e2; apply: lee_ltD => //.
 by rw ge0_fin_numE // (le_lt_trans gf0) ?ltey.
 Qed.
 
+(* A complete space in the sense of completeType, with a point. *)
+Lemma complete_space_cvg (T : pseudoPMetricType R) : complete_space T ->
+  forall F : set_system T, ProperFilter F -> cauchy F -> cvg F.
+Proof. by move=> cT F FF cF; have [x Fx] := cT F FF cF; exact: cvgP Fx. Qed.
+
+(* The one-point space is complete. *)
+Lemma unit_complete : complete_space (Datatypes.unit : pseudoMetricType R).
+Proof.
+move=> F FF _; exists tt; apply/cvg_edistP => e e0; near=> y.
+by rw unit_edistE lte_fin.
+Unshelve. all: by end_near. Qed.
+
 End completeness.

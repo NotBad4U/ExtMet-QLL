@@ -23,7 +23,7 @@ The equality former is interpreted by the distance map, the quantifiers by the $
 
 $
       (attach(=, br: A)) & : A times.o A -> prop, quad                        & (x, x') |-> e^(-d_A (x, x')) \
-  exists^s_A, forall^s_A & : cal(W) A times.o (A multimap prop) -> prop, quad &                 s in [0, oo]
+  exists^s_A, forall^s_A & : r cal(W) A times.o (r A multimap prop) -> prop, quad &              r, s in [0, oo]
 $
 
 For a reference measure $m in cal(W) A$, a predicate $g in A multimap prop$, and integration point $x : A$, the operators are the $p$-mean and harmonic $p$-mean
@@ -100,20 +100,18 @@ A _predicate in context_ $Γ$ is a term $φ$ with $Γ ⊢ φ : prop$. Since $pro
 
 #let prop-all = prooftree(rule(
   name: [($forall^s_i$)],
-  $Γ, x tcol(s) A ⊢ φ : prop$,
+  $Γ, x tcols(r, s) A ⊢ φ : prop$,
   $Γ' ⊢ m : cal(W) A$,
-  $s in [0, oo]$,
   // --------------------------------
-  $Γ ⧺ Γ' ⊢ fa(s) (x tilde m). space φ : prop$,
+  $Γ ⧺ r Γ' ⊢ fa(s) (x tilde m). space φ : prop$,
 ))
 
 #let prop-ex = prooftree(rule(
   name: [($exists^s_i$)],
-  $Γ, x tcol(s) A ⊢ φ : prop$,
+  $Γ, x tcols(r, s) A ⊢ φ : prop$,
   $Γ' ⊢ m : cal(W) A$,
-  $s in [0, oo]$,
   // -------------------------------
-  $Γ ⧺ Γ' ⊢ ex(s) (x tilde m). space φ : prop$,
+  $Γ ⧺ r Γ' ⊢ ex(s) (x tilde m). space φ : prop$,
 ))
 
 #let prop-typing-rules = (
@@ -177,18 +175,18 @@ The equality clause is a morphism of *CExtMet*: it factors as the $1$-Lipschitz 
   All three hold at every grade because the averaged integrand is pointwise $>= 1$, and any $s$-mean of values $>= 1$ is again $>= 1$.
 ]
 
-The quantifier clauses are morphisms by the same pattern: after $"split"$, the pair $⟦m⟧ times.o "curry"(⟦φ⟧)$ feeds the operator $exists^s_(⟦A⟧)$ (resp. $forall^s_(⟦A⟧)$), which is non-expansive in the predicate slot (sup-log, every $s$) and in the measure slot (Kantorovich, $p >= 1$).
+The quantifier clauses are morphisms by the same pattern: after $"split"$, the pair $r⟦m⟧ times.o "curry"(⟦φ⟧)$ feeds the operator $exists^s_(⟦A⟧)$ (resp. $forall^s_(⟦A⟧)$), which is non-expansive in the predicate slot (sup-log, every $s$) and in the measure slot (Kantorovich, $p >= 1$).
 
 #block(above: 1.5em, below: 1.5em, width: 100%, align(center, diagram(
   spacing: 3.6em,
-  node((0, 0), $⟦Γ⟧ times.o ⟦Γ'⟧$),
-  node((1, 0), $cal(W) ⟦A⟧ times.o (⟦A⟧ multimap prop)$),
+  node((0, 0), $⟦Γ⟧ times.o r⟦Γ'⟧$),
+  node((1, 0), $r cal(W) ⟦A⟧ times.o (r⟦A⟧ multimap prop)$),
   node((2, 0), $prop$),
-  edge((0, 0), (1, 0), $⟦m⟧ times.o "curry"(⟦φ⟧)$, "->"),
+  edge((0, 0), (1, 0), $r⟦m⟧ times.o "curry"(⟦φ⟧)$, "->"),
   edge((1, 0), (2, 0), $exists^s_(⟦A⟧)$, "->"),
 )))
 
-so that $⟦ exists^s (x tilde m). φ ⟧ = integral^s_(x tilde ⟦m⟧) ∘ "curry"(⟦φ⟧) = exists^s_(⟦A⟧) ∘ (⟦m⟧ times.o "curry"(⟦φ⟧)) ∘ "split"$, and dually with $forall^s$.
+so that $⟦ exists^s (x tilde m). φ ⟧ = integral^s_(x tilde ⟦m⟧) ∘ "curry"(⟦φ⟧) = exists^s_(⟦A⟧) ∘ (r⟦m⟧ times.o "curry"(⟦φ⟧)) ∘ "split"$, and dually with $forall^s$.
 
 == The graded entailment judgement
 

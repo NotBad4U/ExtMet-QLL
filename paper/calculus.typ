@@ -24,7 +24,7 @@ The term $delta M$ denotes a distribution, and $M amp.inv_p N$ the convex sumof 
 The types of the calculus are defined by the grammar:
 
 #let types-syntax = $
-  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A
+  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A | prop
 $
 
 #types-syntax
@@ -55,7 +55,7 @@ where $Γ$ is a context of variable bindings, $t$ is a term of type $A$.
 
 In context the sensitivity of a variable $x$ is tracked by annotating its type with a sensitivity index $r$ as in the following context judgment:
 
-#let ctx-judg = $ Γ, x tcol(r) A $
+#let ctx-judg = $ Γ, x tcols(r, s) A $
 
 #align(center, box(
   stroke: .5pt,
@@ -82,9 +82,9 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   name: [],
   $Γ :: "ctx"$,
   $x in.not Γ$,
-  $r in [0, oo]$,
+  $r, s in [0, oo]$,
   // ---------------------------------------
-  $Γ, x tcol(r) A :: "ctx"$,
+  $Γ, x tcols(r, s) A :: "ctx"$,
 ))
 
 
@@ -100,8 +100,8 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 #definition[context scaling operations][
   - $emptyctx ⧺ emptyctx equiv emptyctx$
   - $r emptyctx equiv emptyctx$
-  - $(Γ, x tcol(r) A) ⧺ (Γ', x tcol(s) A) equiv Γ ⧺ Γ', x tcol(r + s) A$
-  - $r(Γ, x tcol(s) A) equiv r(Γ), x tcol(r dot s) A$
+  - $(Γ, x tcols(r, s) A) ⧺ (Γ', x tcols(r', s') A) equiv Γ ⧺ Γ', x tcols(r + r', s plus.o^* s') A$
+  - $r(Γ, x tcols(r', s) A) equiv r(Γ), x tcols(r dot r', s) A$
 ]
 
 === Rules for ordinary terms
@@ -110,12 +110,12 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
   name: [(VAR)],
   $r >= 1$,
   // --------------------------
-  $Γ, x tcol(r) A, Γ' ⊢ x : A$,
+  $Γ, x tcols(r, o) A, Γ' ⊢ x : A$,
 ))
 
 #let abs = prooftree(rule(
   name: [(ABS)],
-  $Γ, x tcol(r) A ⊢ t : B$,
+  $Γ, x tcols(r, o) A ⊢ t : B$,
   // ---------------------------------
   $Γ ⊢ λ x. t : A attach(⊸, br: r) B$,
 ))
@@ -160,8 +160,8 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 #let case = prooftree(rule(
   name: [(CASE)],
   $Γ' ⊢ t : A + B$,
-  $Γ, x tcol(r) A ⊢ u : C$,
-  $Γ, y tcol(r) B ⊢ v : C$,
+  $Γ, x tcols(r, o) A ⊢ u : C$,
+  $Γ, y tcols(r, o') B ⊢ v : C$,
   $r > 0$,
   // --------------------------------------------------------
   $Γ ⧺ r Γ' ⊢ "case" t "of" ["inj"_1 x => u | "inj"_2 y] : C$,
@@ -177,7 +177,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 
 #let letin = prooftree(rule(
   name: [(LET-$times.o$)],
-  $Γ, x tcol(r) A, y tcol(s) B ⊢ t : C$,
+  $Γ, x tcols(r, o) A, y tcols(s, o') B ⊢ t : C$,
   $Γ' ⊢ u : A attach(⊗, br: r, bl: s) B$,
   // -------------------------------------
   $Γ ⧺ Γ' ⊢ "let" (x, y) = t "in" u : C$,
@@ -201,7 +201,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 
 #let letalg = prooftree(rule(
   name: [(SAMPL)],
-  $Γ, x tcol(r) A ⊢ t: E$,
+  $Γ, x tcols(r, o) A ⊢ t: E$,
   $Γ' ⊢ u : cal(W) A$,
   "E IB algebra",
   $r < infinity$,
@@ -225,7 +225,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 #let rec = prooftree(rule(
   name: [(REC)],
   $Γ ⊢ z : A$,
-  $Γ', x tcol(1) A, y tcol(1) NN ⊢ s : A$,
+  $Γ', x tcols(1, o) A, y tcols(1, o') NN ⊢ s : A$,
   $Γ'' ⊢ n : NN$,
   // ------------------------------------------
   $Γ ⧺ ∞ Γ' ⧺ Γ'' ⊢ "rec"(z, (x,y).s, n) : A$,
@@ -233,7 +233,7 @@ The sum of two context $Γ ⧺ Γ'$ and scaling $r Γ$ of contexts are defined t
 
 #let fix = prooftree(rule(
   name: [(FIX)],
-  $(1-r) Γ, x tcol(r) A ⊢ t : A$,
+  $(1-r) Γ, x tcols(r, o) A ⊢ t : A$,
   $r < 1$,
   // --------------------------
   $Γ ⊢ "fix" x. t : A$,
@@ -293,7 +293,7 @@ Each type is interprerted as an object in *CExtMet*:
   $
                    ⟦ cal(W)A ⟧ & ≜ cal(W)⟦ A ⟧ \
        ⟦ "unit" ⟧ & ≜ bold("1") \
-    ⟦ Γ, x attach(:, tr: r) A⟧ & ≜ ⟦ Γ ⟧ times.o r⟦ A⟧
+    ⟦ Γ, x tcols(r, s) A⟧ & ≜ ⟦ Γ ⟧ times.o r⟦ A⟧
   $
 ]
 
@@ -302,7 +302,7 @@ Each type is interprerted as an object in *CExtMet*:
 Judgements are interpreted as morphisms:
 
 $
-  ⟦ Γ, x attach(:, tr: r) A⟧: ⟦ Γ ⟧ arrow r⟦ A ⟧
+  ⟦ Γ, x tcols(r, s) A⟧: ⟦ Γ ⟧ arrow r⟦ A ⟧
 $
 
 We define the semantics for the structural functions:

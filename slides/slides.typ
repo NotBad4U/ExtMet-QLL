@@ -11,7 +11,7 @@
 #import "@preview/curryst:0.6.0": prooftree, rule
 
 // Notation shared with the paper: ⟨⟩, x :ʳ A, Prop, ⊢_p, ⊕ˢ, ∀ˢ, ∃ˢ, rule layout.
-#import "../paper/common.typ": emptyctx, tcol, prop, ent, psum, fa, ex, rule-set
+#import "../paper/common.typ": emptyctx, tcol, tcols, prop, ent, psum, fa, ex, rule-set
 // The typing rules are renamed on import: `abs`, `case`, `fix`, ... would
 // otherwise shadow the math functions of the same name.
 #import "../paper/calculus.typ": (
@@ -182,11 +182,11 @@
   node((70pt, 95pt), [type $A$], name: <s1>),
   node((330pt, 95pt), [object $⟦ A ⟧$], name: <m1>),
   // row 2: contexts
-  node((70pt, 55pt), [context $Gamma, x tcol(r) A$], name: <s2>),
+  node((70pt, 55pt), [context $Gamma, x tcols(r, s) A$], name: <s2>),
   node((330pt, 55pt), $⟦ Gamma ⟧ times.o r ⟦ A ⟧$, name: <m2>),
   node((330pt, 33pt), lab[]),
   // row 3: judgements
-  node((70pt, 5pt), [judgement $Gamma, x tcol(r) A ⊢ t : B$], name: <s3>),
+  node((70pt, 5pt), [judgement $Gamma, x tcols(r, s) A ⊢ t : B$], name: <s3>),
   node((330pt, 5pt), $⟦ t ⟧ : ⟦ Gamma ⟧ times.o r ⟦ A ⟧ -> ⟦ B ⟧$, name: <m3>),
   node((330pt, -18pt), lab[]),
   edge(<s1>, <m1>, lab[$⟦ - ⟧$], "->"),
@@ -210,6 +210,131 @@
 
 #set text(size: 23pt)
 
+
+
+// =====================================================================
+= Quantitative Linear Logic overview
+// =====================================================================
+
+// The algebra of [0, ∞]: a table polarity × (additive | multiplicative),
+// conjunctive cells in blue and disjunctive cells in emerald.
+#let mr-cols = (1.8fr, 1.4fr, 4.4fr, 2.8fr)
+
+// `u := v` above `a op b`, the symbols aligned in three columns.
+#let unit-op(u, v, op) = grid(
+  columns: 3, column-gutter: 0.5em, row-gutter: 0.6em, align: center,
+  u, $:=$, v,
+  $a$, op, $b$,
+)
+
+// A multiplicative cell: the unit and the operation, and the convention at 0 · ∞.
+#let mult-cell(op, conv) = grid(
+  columns: (auto, 1fr), align: horizon + center,
+  unit-op($bold(1)$, $1$, op), conv,
+)
+
+// An additive cell: the soft p-sum and, as p -> +oo, the hard lattice operation.
+#let soft-hard-cols = (4.6em, 4.2em, 4.6em)
+#let soft-hard(u, v, soft-op, hard-op) = align(center, grid(
+  columns: soft-hard-cols, align: center + horizon,
+  unit-op(u, v, soft-op),
+  diagram(edge((0pt, 0pt), (3.4em, 0pt), "->", label: text(size: 0.7em, $p -> +oo$))),
+  unit-op(u, v, hard-op),
+))
+
+#slide(title: [The multiplicative $p$-reals])[
+  #set text(size: 18pt)
+  $[0, oo]_(plus.o^p, times.o)$ with the following algebraic structure on $([0, oo], <=)$:
+  // "distributes over", from the multiplicative to the additive header
+  #grid(
+    columns: mr-cols,
+    [], [],
+    grid.cell(colspan: 2, align(center, diagram(
+      axes: (ltr, btt),
+      edge((60pt, 0pt), (-80pt, 0pt), "->", bend: -28deg, stroke: 1.2pt,
+        label: text(size: 0.6em, weight: "bold")[distributes over], label-side: right),
+    ))),
+  )
+  #v(-0.6em)
+  #table(
+    columns: mr-cols,
+    align: center + horizon,
+    inset: (x: 0.5em, y: 0.55em),
+    stroke: (x, y) => if x == 0 and y == 0 { (right: 0.8pt, bottom: 0.8pt) } else { 0.8pt },
+    [], [*polarity*], [*additive*], [*multiplicative*],
+    // the duality, with the de Morgan arrow on the right border, between the rows
+    table.cell(rowspan: 2, align: left + horizon, box(width: 100%, {
+      place(right + horizon, dx: 1.3em, stack(
+        dir: ltr, spacing: 0.15em,
+        rotate(-90deg, reflow: true, text(size: 0.6em, weight: "medium")[de Morgan]),
+        diagram(axes: (ltr, btt), edge((0pt, 30pt), (0pt, -30pt), "<->", bend: -110deg, stroke: 1.2pt)),
+      ))
+      [*duality* \ $a^* := 1 \/ a$]
+    })),
+    [*positive*],
+    table.cell(fill: colors.emerald.lighten(85%), soft-hard($bot$, $0$, $plus.o^p$, $or$)),
+    table.cell(fill: colors.royalblue.lighten(85%), mult-cell($times.o$, $oo times.o 0 := 0$)),
+    [*negative*],
+    table.cell(fill: colors.royalblue.lighten(85%), soft-hard($top$, $oo$, $plus.o^(-p)$, $and$)),
+    table.cell(fill: colors.emerald.lighten(85%), mult-cell($times.o^*$, $oo times.o^* 0 := oo$)),
+  )
+  #v(-1.1em)
+  #grid(
+    columns: mr-cols,
+    [], [],
+    align(center, grid(
+      columns: soft-hard-cols, align: center,
+      $underbrace(#box(width: 4.2em), #strong[soft])$, [],
+      $underbrace(#box(width: 4.2em), #strong[hard])$,
+    )),
+    [],
+  )
+  #v(-0.6em)
+  where
+  #pad(left: 1.2em)[
+    $times.o$ and $times.o^*$ are multiplication (#text(fill: colors.royalblue, weight: "bold")[conjunctive] and #text(fill: colors.emerald, weight: "bold")[disjunctive]), \
+    $plus.o^p$ is $p$-sum: $a plus.o^p b = (a^p plus.o b^p)^(1 \/ p)$, $0 < p <= oo$, \
+    $plus.o^(-p)$ is harmonic $p$-sum: $a plus.o^(-p) b = (a^* plus.o^p b^*)^*$,
+  ]
+]
+
+== Syntax and softness
+
+#set text(size: 19pt)
+  $
+    φ, ψ ::= & t | top | bot | t =_A u | φ times.o ψ | φ times.o^* ψ | φ arrow.double ψ | r φ | φ^* \
+           | & φ or^s ψ | φ and^s ψ | fa(s) (x tilde m). φ | ex(s) (x tilde m). φ 
+  $
+  $
+    Δ | Ψ & ent(p) φ
+  $
+- Every variable carries a *sensitivity* and a *softness*, $x tcols(r, s) A$; a quantifier records the softness of the variable it binds
+- The *softness* $s$ grades the soft connectives, interpreted by the $s$-sums:
+  $
+    ⟦ φ or^s ψ ⟧ &= ⟦ φ ⟧ plus.o^s ⟦ ψ ⟧ & quad ⟦ φ and^s ψ ⟧ &= ⟦ φ ⟧ plus.o^(-s) ⟦ ψ ⟧ \
+                &= (⟦ φ ⟧^s plus.o ⟦ ψ ⟧^s)^(1/s)     &  quad  &= (⟦ φ ⟧^* plus.o^s ⟦ ψ )^*⟧^* 
+  
+  $
+
+#remark[
+  $s = oo$ is *hard*, $or^oo = max$ and $and^oo = min$; a smaller $s$ is *softer*
+]
+
+== Soft quantifiers: $s$-means
+
+#set text(size: 19pt)
+Over $exists^s$ is the $s$-mean and $forall^s$ the harmonic $s$-mean:
+  $
+    ex(s) (x tilde m). φ = (integral φ(x)^s dif m(x))^(1 \/ s) quad quad quad
+    fa(s) (x tilde m). φ = (integral φ(x)^(-s) dif m(x))^(-1 \/ s)
+  $
+Facts:
+- Quantifiers are dual $(fa(s) (x tilde m). φ)^* = ex(s) (x tilde m). φ)$
+- $s = 1$ gives the expectation $EE_(x tilde m) [φ]$
+- As $s -> oo$ they become the hard quantifiers $inf$ and $sup$
+
+
+
 // =====================================================================
 // Introduction
 // =====================================================================
@@ -222,6 +347,10 @@ $
   - Sensitivity of program outputs to inputs
   - convergence
 - Quantitative linear logic
+
+#remark[
+  🔓 Framework for expressing quantitative logic
+]
 
 == Example: Probabilistic Bisimilarity Distance
 
@@ -252,6 +381,8 @@ $
 
   #remark[
     We write $d(x, x)$ for $d_X (x, y)$ when $X$ is implicit.
+
+    🔓 Multiplicative Reals
   ]
 
 == Quantitative Linear Logic (FQLL) in EMet
@@ -265,6 +396,10 @@ $
   $
 - So $infinity$ is $top$, $0$ is $bot$
 - $phi tack.r psi$ means $phi <= psi$
+
+#remark[
+  🔓 Expressing Prop domain
+]
 
 == Two Basic Observations
 
@@ -463,6 +598,22 @@ $
 $
 We assign to $cal(W)X$ (probability monad) the Wasserstein metric. 
 
+== Monad $cal(W)X$ Operators
+
+#set text(size: 20pt)
+- Return: the Dirac measure
+  $
+    delta_X : X -> cal(W) X, quad quad delta_X (x)(A) = cases(1 & "if" x in A, 0 & "otherwise")
+  $
+- Bind: for a probability kernel $f : X -> cal(W) Y$
+  #align(center)[`(μ >>= f)(B) =` $display(integral_(x ∈ X) f(x)(B) dif mu(x))$]
+- Monad laws
+  - `δ(x) >>= f ≡ f(x)`
+  - `μ >>= δ ≡ μ`
+  - `(μ >>= f) >>= g ≡ μ >>= (x |-> f(x) >>= g)`
+
+
+
 == Interpolative barycentric algebras
 
 
@@ -481,7 +632,7 @@ $
 ]
 
 #slide(title: [Interpolative barycentric algebras])[
-  
+
 ]
 
 // =====================================================================
@@ -493,10 +644,14 @@ $
 #set text(size: 19pt)
 - Judgement
 $
-  Γ tack M attach(:, tr: r) N quad quad Gamma ⧺ Gamma'
+  Γ, x tcols(r, s) A tack t : B quad quad Gamma ⧺ Gamma' quad quad c Gamma
 $
 - Types
-  #types-syntax
+
+$
+  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A | text(weight: "bold", fill: #colors.emerald, prop)  
+$
+
 - Terms
   #term-syntax
 
@@ -524,14 +679,15 @@ $
 
 - Sum of contexts
   $
-    (Gamma, x tcol(r) A) ⧺ (Gamma', x tcol(s) A) & = (Gamma ⧺ Gamma'), x tcol(r + s) A \
+    (Gamma, x tcols(r, s) A) ⧺ (Gamma', x tcols(r', s') A) & = (Gamma ⧺ Gamma'), x tcols(r + r', s plus.o^* s') A \
     emptyctx ⧺ emptyctx & = emptyctx
   $
 - Scaling of contexts
   $
-    c (Gamma, x tcol(r) A) & = c Gamma, x tcol(c dot r) A \
+    c (Gamma, x tcols(r, s) A) & = c Gamma, x tcols(c dot r, s) A \
     c emptyctx & = emptyctx
   $
+- Sensitivities add and scale; softnesses compose by harmonic sum $1 / (s plus.o^* s') = 1 / s + 1 / s'$ (unit $oo$) and ignore scaling
 - $⟦ Gamma ⧺ Gamma' ⟧ -> ⟦ Gamma ⟧ times.o ⟦ Gamma' ⟧$ and $⟦ c Gamma ⟧ -> c ⟦ Gamma ⟧$ are identities on the common carrier
 
 == Typing rules: probability and recursion
@@ -561,8 +717,8 @@ $
 - Define $m$ as
   $ m ≜ "fix" m. (a, space delta m amp.inv_(1 \/ 3) delta z) $
 - Using
-  $ z tcol(2 / 3) PP, space m tcol(1 / 3) PP ⊢ (a, space delta m amp.inv_(1 \/ 3) delta z) : PP $
-  so that (FIX) with $r = 1 / 3$ gives $z tcol(1) PP ⊢ m : PP$: the process $m$ is non-expansive in $z$
+  $ z tcols(2 / 3, s) PP, space m tcols(1 / 3, s) PP ⊢ (a, space delta m amp.inv_(1 \/ 3) delta z) : PP $
+  so that (FIX) with $r = 1 / 3$ gives $z tcols(1, s) PP ⊢ m : PP$: the process $m$ is non-expansive in $z$
 
 // =====================================================================
 = The internal quantitatice logic
@@ -597,18 +753,19 @@ We need to track sensitivity for
 == Typing rule for Prop operator
 
 #set text(size: 17pt)
-Since $prop$ is an object of #cext, predicates track sensitivity exactly like terms.
+Since $prop$ is an object of #cext, predicates track sensitivity exactly like terms; a quantifier binds $x tcols(r, s) A$ and records its softness $s$.
 #v(0.3em)
 #align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, prop-eq, prop-tens, prop-imp, prop-scale, prop-dual, prop-sum, prop-all, prop-ex))
 
 == Soft quantifiers are means
 
 #set text(size: 19pt)
-- The quantifiers are morphisms $exists^s_A, forall^s_A : cal(W) A times.o (A multimap prop) -> prop$, for $s in [0, oo]$
+- The quantifiers are morphisms $exists^s_A, forall^s_A : r cal(W) A times.o (r A multimap prop) -> prop$, for $r, s in [0, oo]$
   $
     ex(s) (x tilde m). phi = (integral phi(x)^s dif m(x))^(1 \/ s) quad quad quad
     fa(s) (x tilde m). phi = (integral phi(x)^(-s) dif m(x))^(-1 \/ s)
   $
+- $s$ is the softness of the bound variable $x tcols(r, s) A$; its sensitivity $r$ is not recorded, it is absorbed by $r cal(W) A = cal(W)(r A)$
 - $s = oo$: $sup$ and $inf$ over the support of $m$, the hard quantifiers
 - $s = 1$: the expectation $EE_(x tilde m) [phi]$ and its harmonic mean
 

@@ -20,6 +20,8 @@
 
 // typing colon:  tcol(r) renders ":" with sensitivity r on top
 #let tcol(r) = $attach(:, tr: #r)$
+// typing colon of a variable: sensitivity r on top, softness s below
+#let tcols(r, s) = $attach(:, tr: #r, br: #s)$
 
 #let prop = "Prop"
 

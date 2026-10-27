@@ -3,21 +3,30 @@
 From mathcomp Require Import boot order ssralg ssrnum ssrint interval.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import boolp classical_sets reals constructive_ereal ereal.
-From ExtMetQLL Require Import analysis_extras.
+From ExtMetQLL Require Import analysis_extras propmetric.
 
 (**md**************************************************************************)
 (* # Syntax of the calculus for CExtMet                                       *)
 (*                                                                            *)
 (* Types, terms and the typing judgement of the graded lambda-calculus of    *)
 (* the paper.  Variables are de Bruijn indices.  A context                   *)
-(* Γ = x_1 :^{r_1} A_1, ..., x_n :^{r_n} A_n of the paper is split into its   *)
-(* skeleton Γ : seq ty and its sensitivities σ : senv, both with the last    *)
-(* binding first: Γ, x :^r A is A :: Γ together with r :: σ, and x is the    *)
-(* variable 0.  All the contexts of a rule share the skeleton, so that the   *)
-(* sum Γ ⧺ Γ' and the scaling rΓ of the paper (only defined on contexts over *)
-(* the same variables) are the pointwise operations ⧺ and *: on σ.           *)
+(* Γ = x_1 :^{r_1}_{s_1} A_1, ..., x_n :^{r_n}_{s_n} A_n of the paper is     *)
+(* split into its skeleton Γ : seq ty and its entries σ : senv, both with    *)
+(* the last binding first: Γ, x :^r_s A is A :: Γ together with              *)
+(* CEntry r s :: σ, and x is the variable 0.  Every variable carries two     *)
+(* independent grades: a sensitivity r (superscript), the scalar of the      *)
+(* metric r⟦A⟧ it is read at, and a softness s (subscript), the exponent     *)
+(* of the mean a quantifier of the logic (QuantLogic.v) averages it with.    *)
+(* The terms only use the sensitivities (the semantics ignores esoft): a     *)
+(* term binder leaves the softness of its variable free, and only a          *)
+(* quantifier records the softness of the variable it binds.  All the        *)
+(* contexts of a rule share the skeleton, so that the sum Γ ⧺ Γ' and the     *)
+(* scaling rΓ of the paper (only defined on contexts over the same           *)
+(* variables) are the pointwise operations ⧺ and *: on σ: ⧺ adds the         *)
+(* sensitivities and takes the harmonic sum of the softnesses (the           *)
+(* composition of grades under cut), *: scales the sensitivities only.       *)
 (* Weakening is implicit, as in the paper: the leaf rules accept arbitrary   *)
-(* sensitivities, and only a variable that is used needs r >= 1.             *)
+(* entries, and only a variable that is used needs r >= 1.                   *)
 (*                                                                            *)
 (* The scalars are those of the semantics: sensitivities are the scalars of  *)
 (* scale (cextmet.v), contraction factors those of econtraction (extmet.v,   *)
@@ -34,14 +43,19 @@ From ExtMetQLL Require Import analysis_extras.
 (*   prob_sens p, prob_sensC p == p (a coercion) and 1 - p as sensitivities,  *)
 (*                      with sens_sub the truncated difference (omega_scope) *)
 (*   contr_sens r, contr_sensC r == r and 1 - r as sensitivities              *)
+(*   sens_hsum r s == the harmonic sum (r^-1 + s^-1)^-1 of softnesses         *)
 (*              ty R == types A, B ::= ℕ | unit | A × B | A + B               *)
-(*                      | A ⊗[ r , s ] B | A ⊸[ r ] B | 𝕎 A                   *)
+(*                      | A ⊗[ r , s ] B | A ⊸[ r ] B | 𝕎 A | Prop            *)
 (*                      (notations in ty_scope, delimiter %ty);              *)
-(*                      A ⊗[ r , s ] B is rA ⊗ sB and A ⊸[ r ] B is rA ⊸ B     *)
+(*                      A ⊗[ r , s ] B is rA ⊗ sB and A ⊸[ r ] B is rA ⊸ B;    *)
+(*                      Prop is ty_prop, the truth values                  *)
 (*           ib_ty E == E denotes an interpolative barycentric algebra       *)
 (*              tm R == terms, with de Bruijn indices (notations in          *)
 (*                      tm_scope, delimiter %tm)                              *)
-(*            senv R == sensitivity environments σ : seq (Ω R)             *)
+(*          centry R == context entries CEntry r s: a sensitivity esens and  *)
+(*                      a softness esoft, both in Ω R; centry0 = (0, +oo)    *)
+(*                      is the unit of their sum                             *)
+(*            senv R == context environments σ : seq (centry R)              *)
 (*     σ ⧺ τ, r *: σ == the sum and the scaling of contexts (senv_scope)      *)
 (*   Γ ⊢[ σ ] t : A == the typing judgement typed Γ σ t A                      *)
 (* ```                                                                        *)
@@ -103,6 +117,11 @@ Definition prob_sensC (p : ℙ_convex) : Ω := sens_sub sens1 (prob_sens p).
 
 Definition contr_sens (r : contr) : Ω := (r%:num)%:nng.
 Definition contr_sensC (r : contr) : Ω := (adde 1 (oppe r%:num))%:nng.
+
+(* The harmonic sum r ⊕* s = (r^-1 + s^-1)^-1 of softnesses, with unit +oo,
+   through the involution of [0, +oo] (estar, propmetric.v). *)
+Definition sens_inv (r : Ω) : Ω := mkprop (estar_ge0 (ge0e r)).
+Definition sens_hsum (r s : Ω) : Ω := sens_inv (sens_add (sens_inv r) (sens_inv s)).
 
 Lemma sens0E : sens0%:num = 0. Proof. by []. Qed.
 Lemma sens1E : sens1%:num = 1. Proof. by []. Qed.
@@ -168,16 +187,18 @@ Inductive ty : Type :=
 | ty_sum of ty & ty                       (* A + B *)
 | ty_tensor of Ω R & ty & Ω R & ty  (* A ⊗[r, s] B = rA ⊗ sB *)
 | ty_lolli of Ω R & ty & ty            (* A ⊸[r] B = rA ⊸ B *)
-| ty_dist of ty.                          (* W A *)
+| ty_dist of ty                           (* W A *)
+| ty_prop.                                (* Prop, the truth values *)
 
 (* The types whose denotation is an interpolative barycentric algebra, the
    side condition of the rule (LET): W A and the unit, closed under the
    cartesian and the monoidal products and under the exponentials, with the
    pointwise convex combinations.  N and the sums are excluded, two distinct
-   points of N or of different summands being at distance +oo. *)
+   points of N or of different summands being at distance +oo; Prop is
+   excluded too, the semantics having no algebra W Prop -> Prop. *)
 Fixpoint ib_ty (E : ty) : bool :=
   match E with
-  | ℕ | ty_sum _ _ => false
+  | ℕ | ty_sum _ _ | ty_prop => false
   | unit | ty_dist _ => true
   | ty_prod A B | ty_tensor _ A _ B => ib_ty A && ib_ty B
   | ty_lolli _ _ B => ib_ty B
@@ -207,21 +228,38 @@ Inductive tm : Type :=
 | rec of tm & tm & tm           (* rec (z, (x, y). s, n) *)
 | tm_fix of tm.                 (* fix x. t *)
 
-(* Sensitivity environments: the sensitivities of a context, last binding
-   first. *)
-Definition senv : Type := seq (Ω R).
+(* A context entry x :^r_s A: the sensitivity r and the softness s of the
+   variable, two independent grades in [0, +oo]. *)
+Record centry : Type := CEntry { esens : Ω R; esoft : Ω R }.
+
+(* The unit (0, +oo) of the sum of entries (the default of nth). *)
+Definition centry0 : centry := CEntry sens0 sensy.
+
+(* Two uses of a variable add their sensitivities and combine their
+   softnesses by harmonic sum. *)
+Definition centry_add (e e' : centry) : centry :=
+  CEntry (sens_add (esens e) (esens e')) (sens_hsum (esoft e) (esoft e')).
+
+(* Scaling a context scales the sensitivities and leaves the softnesses
+   unchanged. *)
+Definition centry_scale (r : Ω R) (e : centry) : centry :=
+  CEntry (sens_mul r (esens e)) (esoft e).
+
+(* Context environments: the entries of a context, last binding first. *)
+Definition senv : Type := seq centry.
 
 (* The sum Γ ⧺ Γ' and the scaling rΓ of contexts over the same variables. *)
 Definition senv_add (σ τ : senv) : senv :=
-  [seq sens_add p.1 p.2 | p <- zip σ τ].
+  [seq centry_add p.1 p.2 | p <- zip σ τ].
 
 Definition senv_scale (r : Ω R) (σ : senv) : senv :=
-  [seq sens_mul r s | s <- σ].
+  [seq centry_scale r e | e <- σ].
 
 End syntax.
 
 Arguments ty : clear implicits.
 Arguments tm : clear implicits.
+Arguments centry : clear implicits.
 Arguments senv : clear implicits.
 
 Declare Scope ty_scope.
@@ -277,7 +315,8 @@ Local Open Scope senv_scope.
 
 Section senv_theory.
 Context {R : realType}.
-Implicit Types (r s : Ω R) (σ τ : senv R).
+Implicit Types (r s : Ω R) (e : centry R) (σ τ : senv R) (Γ : seq (ty R))
+  (A : ty R).
 
 (* The defining equations of the paper (Definition "context scaling
    operations"), the contexts being over the same variables. *)
@@ -288,12 +327,24 @@ Lemma senv_add_nil : [::] ⧺ [::] = [::] :> senv R. Proof. by []. Qed.
 (*   r ⟨⟩ ≡ ⟨⟩ *)
 Lemma senv_scale_nil r : r *: [::] = [::] :> senv R. Proof. by []. Qed.
 
-(*   (Γ, x :^r A) ⧺ (Γ', x :^s A) ≡ Γ ⧺ Γ', x :^(r + s) A *)
-Lemma senv_add_cons r s σ τ : (r :: σ) ⧺ (s :: τ) = sens_add r s :: σ ⧺ τ.
+(*   (Γ, x :^r_s A) ⧺ (Γ', x :^r'_s' A) ≡ Γ ⧺ Γ', x :^(r + r')_(s ⊕* s') A *)
+Lemma senv_add_cons e e' σ τ : (e :: σ) ⧺ (e' :: τ) = centry_add e e' :: σ ⧺ τ.
 Proof. by []. Qed.
 
-(*   r (Γ, x :^s A) ≡ r Γ, x :^(r · s) A *)
-Lemma senv_scale_cons r s σ : r *: (s :: σ) = sens_mul r s :: r *: σ.
+(*   r (Γ, x :^r' A) ≡ r Γ, x :^(r · r') A, the softness unchanged *)
+Lemma senv_scale_cons r e σ : r *: (e :: σ) = centry_scale r e :: r *: σ.
+Proof. by []. Qed.
+
+Lemma esens_add e e' : esens (centry_add e e') = sens_add (esens e) (esens e').
+Proof. by []. Qed.
+
+Lemma esoft_add e e' : esoft (centry_add e e') = sens_hsum (esoft e) (esoft e').
+Proof. by []. Qed.
+
+Lemma esens_scale r e : esens (centry_scale r e) = sens_mul r (esens e).
+Proof. by []. Qed.
+
+Lemma esoft_scale r e : esoft (centry_scale r e) = esoft e.
 Proof. by []. Qed.
 
 (* Γ ⧺ Γ' is only defined on contexts over the same variables: the sum is
@@ -305,15 +356,15 @@ Lemma size_senv_scale r σ : size (r *: σ) = size σ.
 Proof. by rw size_map. Qed.
 
 Lemma nth_senv_add σ τ i : size σ = size τ -> (i < size σ)%N ->
-  nth sens0 (σ ⧺ τ) i = sens_add (nth sens0 σ i) (nth sens0 τ i).
+  nth centry0 (σ ⧺ τ) i = centry_add (nth centry0 σ i) (nth centry0 τ i).
 Proof.
-move=> st si; rw (nth_map (sens0, sens0)) ?size_zip -?st ?minnn //.
+move=> st si; rw (nth_map (centry0, centry0)) ?size_zip -?st ?minnn //.
 by rw nth_zip.
 Qed.
 
 Lemma nth_senv_scale r σ i : (i < size σ)%N ->
-  nth sens0 (r *: σ) i = sens_mul r (nth sens0 σ i).
-Proof. by move=> si; rw (nth_map sens0). Qed.
+  nth centry0 (r *: σ) i = centry_scale r (nth centry0 σ i).
+Proof. by move=> si; rw (nth_map centry0). Qed.
 
 End senv_theory.
 
@@ -322,26 +373,30 @@ End senv_theory.
 Section typing.
 Context {R : realType}.
 Implicit Types (Γ : seq (ty R)) (σ τ ρ : senv R) (t u v z step n : tm R)
-  (A B C E : ty R) (r s : Ω R) (p : ]0,1[ R).
+  (A B C E : ty R) (r s o : Ω R) (p : ]0,1[ R).
 
-(* Γ ⊢[ σ ] t : A, for Γ and σ of the same length (typed_size).  Derivations
-   live in Type so that the semantics (semantics.v) is defined by recursion
-   on them, as in the paper.  The rules
-   are those of the paper, with the context Γ, x :^r A read as A :: Γ and
-   r :: σ.  The rule (LET-⊗) is read with the scalars of the type matching
+(* Γ ⊢[ σ ] t : A, for σ a context over Γ (typed_size).  Derivations live
+   in Type so that the semantics (semantics.v) is defined by recursion on
+   them, as in the paper.  The rules are those of the paper, with the
+   context Γ, x :^r_o A read as A :: Γ and CEntry r o :: σ.  The softness o
+   of a variable bound by a term binder is a free parameter of the rule:
+   the terms do not average over their variables, so nothing constrains it
+   and the binder forgets it; the quantifiers of the logic (QuantLogic.v)
+   are the binders that record the softness of their variable.  The rule
+   (LET-⊗) is read with the scalars of the type matching
    those of the bound variables, x :^r A, y :^s B for u : A ⊗[r, s] B, and
    with u the pair and t the body, which is what its semantics computes. *)
 Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
 | typed_var Γ σ i A :
     (i < size Γ)%N ->
     nth unit Γ i = A ->
-    1 <= (nth sens0 σ i)%:num ->
+    1 <= (esens (nth centry0 σ i))%:num ->
     size σ = size Γ ->
     (*———————————————————————————— (Var) *)
     Γ ⊢[ σ ] # i : A
 
-| typed_abs Γ σ t A B r :
-    A :: Γ ⊢[ r :: σ ] t : B ->
+| typed_abs Γ σ t A B r o :
+    A :: Γ ⊢[ CEntry r o :: σ ] t : B ->
     (*———————————————————————————— (Abs) *)
     Γ ⊢[ σ ] λ t : A ⊸[r] B
 
@@ -382,10 +437,10 @@ Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
     (*———————————————————————————— (inj₂) *)
     Γ ⊢[ σ ] ι2 t : A1 + A2
 
-| typed_case Γ σ τ t u v A B C r :
+| typed_case Γ σ τ t u v A B C r o o' :
     Γ ⊢[ τ ] t : A + B ->
-    A :: Γ ⊢[ r :: σ ] u : C ->
-    B :: Γ ⊢[ r :: σ ] v : C ->
+    A :: Γ ⊢[ CEntry r o :: σ ] u : C ->
+    B :: Γ ⊢[ CEntry r o' :: σ ] v : C ->
     0 < r%:num ->
     (*———————————————————————————— (Case) *)
     Γ ⊢[ σ ⧺ r *: τ ] tm_case t u v : C
@@ -397,8 +452,8 @@ Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
     (*———————————————————————————— (⊗) *)
     Γ ⊢[ r *: σ ⧺ s *: τ ⧺ ρ ] t ⊗ u : A ⊗[r, s] B
 
-| typed_lettensor Γ σ τ t u A B C r s :
-    B :: A :: Γ ⊢[ s :: r :: σ ] t : C ->
+| typed_lettensor Γ σ τ t u A B C r s o o' :
+    B :: A :: Γ ⊢[ CEntry s o' :: CEntry r o :: σ ] t : C ->
     Γ ⊢[ τ ] u : A ⊗[r, s] B ->
     (*———————————————————————————— (Let-⊗) *)
     Γ ⊢[ σ ⧺ τ ] (let (,) := u in t) : C
@@ -414,8 +469,8 @@ Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
     (*———————————————————————————— (⅋ₚ) *)
     Γ ⊢[ p *: σ ⧺ (1 - p) *: τ ] t ⅋[p] u : 𝕎 A
 
-| typed_let Γ σ τ t u A E r :
-    A :: Γ ⊢[ r :: σ ] t : E ->
+| typed_let Γ σ τ t u A E r o :
+    A :: Γ ⊢[ CEntry r o :: σ ] t : E ->
     Γ ⊢[ τ ] u : 𝕎 A ->
     ib_ty E ->
     r%:num < +oo ->
@@ -432,9 +487,9 @@ Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
     (*———————————————————————————— (Succ) *)
     Γ ⊢[ σ ] succ t : ℕ
 
-| typed_natrec Γ σ τ ρ z step n A :
+| typed_natrec Γ σ τ ρ z step n A o o' :
     Γ ⊢[ σ ] z : A ->
-    ℕ :: A :: Γ ⊢[ sens1 :: sens1 :: τ ] step : A ->
+    ℕ :: A :: Γ ⊢[ CEntry sens1 o' :: CEntry sens1 o :: τ ] step : A ->
     Γ ⊢[ ρ ] n : ℕ ->
     (*———————————————————————————— (Rec) *)
     Γ ⊢[ σ ⧺ sensy *: τ ⧺ ρ ] rec z step n : A
@@ -442,8 +497,8 @@ Inductive typed : seq (ty R) -> senv R -> tm R -> ty R -> Type :=
 (* (Fix): the premise (1 - r)Γ, x :^r A ⊢ t : A with r < 1.  Its semantics
    needs, in addition, a seed at finite displacement or a single-galaxy
    codomain (fixpoint.v). *)
-| typed_fix Γ σ t A (r : contr R) :
-    A :: Γ ⊢[ contr_sens r :: contr_sensC r *: σ ] t : A ->
+| typed_fix Γ σ t A (r : contr R) o :
+    A :: Γ ⊢[ CEntry (contr_sens r) o :: contr_sensC r *: σ ] t : A ->
     (*———————————————————————————— (Fix) *)
     Γ ⊢[ σ ] μ t : A
 where "Γ ⊢[ σ ] t : A" := (typed Γ σ t A).
@@ -452,42 +507,43 @@ Let size_cons_inj {T U : Type} {x : T} {y : U} {s : seq T} {t : seq U} :
   size (x :: s) = size (y :: t) -> size s = size t.
 Proof. by move=> /= []. Qed.
 
-(* Typed terms have as many sensitivities as variables. *)
+(* Typed terms have as many entries as variables. *)
 Lemma typed_size Γ σ t A : Γ ⊢[ σ ] t : A -> size σ = size Γ.
 Proof.
 elim=> {Γ σ t A} //.
-- by move=> Γ σ t A B r _ H; exact: (size_cons_inj H).
+- by move=> Γ σ t A B r o _ H; exact: (size_cons_inj H).
 - move=> Γ σ τ t u A B r _ sG _ tG.
   by rw size_senv_add size_senv_scale sG tG minnn.
-- move=> Γ σ τ t u v A B C r _ tG _ H _ _ _; have sG := size_cons_inj H.
+- move=> Γ σ τ t u v A B C r o o' _ tG _ H _ _ _; have sG := size_cons_inj H.
   by rw size_senv_add size_senv_scale sG tG minnn.
 - move=> Γ σ τ ρ t u A B r s _ sG _ tG rG.
   by rw !size_senv_add !size_senv_scale sG tG rG !minnn.
-- move=> Γ σ τ t u A B C r s _ H _ tG.
+- move=> Γ σ τ t u A B C r s o o' _ H _ tG.
   have sG := size_cons_inj (size_cons_inj H).
   by rw size_senv_add sG tG minnn.
 - move=> Γ σ τ t u A p _ sG _ tG.
   by rw size_senv_add !size_senv_scale sG tG minnn.
-- move=> Γ σ τ t u A E r _ H _ tG _ _; have sG := size_cons_inj H.
+- move=> Γ σ τ t u A E r o _ H _ tG _ _; have sG := size_cons_inj H.
   by rw size_senv_add size_senv_scale sG tG minnn.
-- move=> Γ σ τ ρ z step n A _ sG _ H _ rG.
+- move=> Γ σ τ ρ z step n A o o' _ sG _ H _ rG.
   have tG := size_cons_inj (size_cons_inj H).
   by rw !size_senv_add size_senv_scale sG tG rG !minnn.
-- move=> Γ σ t A r _ H; move: (size_cons_inj H).
+- move=> Γ σ t A r o _ H; move: (size_cons_inj H).
   by rw size_senv_scale.
 Qed.
 
-Lemma typed_size_cons Γ σ t A B r : A :: Γ ⊢[ r :: σ ] t : B -> size σ = size Γ.
+Lemma typed_size_cons Γ σ t A B e : A :: Γ ⊢[ e :: σ ] t : B -> size σ = size Γ.
 Proof. by move/typed_size => /= []. Qed.
 
-Lemma typed_size_cons2 Γ σ t A B C r s :
-  B :: A :: Γ ⊢[ s :: r :: σ ] t : C -> size σ = size Γ.
+Lemma typed_size_cons2 Γ σ t A B C e e' :
+  B :: A :: Γ ⊢[ e' :: e :: σ ] t : C -> size σ = size Γ.
 Proof. by move/typed_size => /= []. Qed.
 
-(* The identity, λ x. x : A ⊸[r] A for every r >= 1 (a transparent derivation,
-   so that its semantics computes). *)
+(* The identity, λ x. x : A ⊸[r] A for every r >= 1, the bound variable at
+   the softness +oo (a transparent derivation, so that its semantics
+   computes). *)
 Example typed_id A r : 1 <= r%:num -> [::] ⊢[ [::] ] λ # 0 : A ⊸[r] A.
-Proof. by move=> r1; apply/typed_abs/typed_var. Defined.
+Proof. by move=> r1; apply: (typed_abs (o := sensy)); apply: typed_var. Defined.
 
 End typing.
 

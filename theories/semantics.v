@@ -8,6 +8,7 @@ From mathcomp Require Import topology_structure uniform_structure.
 From mathcomp Require Import pseudometric_structure separation_axioms urysohn.
 From mathcomp Require Import discrete_topology.
 From ExtMetQLL Require Import analysis_extras extmet cextmet fixpoint syntax.
+From ExtMetQLL Require Import propmetric.
 
 (**md**************************************************************************)
 (* # Semantics of the calculus in CExtMet                                     *)
@@ -38,7 +39,8 @@ From ExtMetQLL Require Import analysis_extras extmet cextmet fixpoint syntax.
 (*                          marginals, the convex combinations wconv, the   *)
 (*                          join wjoin, each non-expansive, and completeness *)
 (*               wsp W X == W X as a (complete) pseudometric space           *)
-(*            sem_ty W A == ⟦A⟧, a complete pseudometric space               *)
+(*            sem_ty W A == ⟦A⟧, a complete pseudometric space; ⟦Prop⟧ is    *)
+(*                          the truth values with the log metric (propmetric.v) *)
 (*          ctx_choice Γ == the carrier of ⟦Γ⟧, a nested product            *)
 (*            ctxC W Γ σ == ⟦Γ ; σ⟧, this carrier with the distance          *)
 (*                          ctx_dist Γ σ of ⟦Γ⟧ ⊗ r_1⟦A_1⟧ ⊗ ...; the maps   *)
@@ -109,19 +111,9 @@ End cprod.
 Section complete_space_lemmas.
 Context {R : realType}.
 
-Lemma complete_space_cvg (T : pseudoPMetricType R) : complete_space T ->
-  forall F : set_system T, ProperFilter F -> cauchy F -> cvg F.
-Proof. by move=> cT F FF cF; have [x Fx] := cT F FF cF; exact: cvgP Fx. Qed.
-
 Lemma nonexpansive_cst (X Y : pseudoMetricType R) (y : Y) :
   nonexpansive (fun _ : X => y).
 Proof. by apply/nonexpansiveP => x x'; rw edist_refl. Qed.
-
-Lemma unit_complete : complete_space (Datatypes.unit : pseudoMetricType R).
-Proof.
-move=> F FF _; exists tt; apply/cvg_edistP => e e0; near=> y.
-by rw unit_edistE lte_fin.
-Unshelve. all: by end_near. Qed.
 
 (* 0 X is indiscrete, hence complete. *)
 Lemma scale_complete_all (r : Ω R) (X : pseudoMetricType R) :
@@ -458,6 +450,7 @@ Fixpoint sem_ty (A : ty R) : completePseudoMetricType R :=
   | ty_tensor r A s B => tensor (scale r (sem_ty A)) (scale s (sem_ty B))
   | ty_lolli r A B => scale r (sem_ty A) -o sem_ty B
   | ty_dist A => wsp W (sem_ty A)
+  | ty_prop => prop R
   end.
 
 (* The carrier of ⟦Γ⟧, a nested product, which does not depend on the
@@ -474,7 +467,7 @@ Fixpoint ctx_dist (Γ : seq (ty R)) (σ : senv R) :
   match Γ with
   | [::] => fun _ _ => 0
   | A :: Γ' => fun γ γ' =>
-      @ctx_dist Γ' (behead σ) γ.1 γ'.1 + (head sens0 σ)%:num * edist (γ.2, γ'.2)
+      @ctx_dist Γ' (behead σ) γ.1 γ'.1 + (esens (head centry0 σ))%:num * edist (γ.2, γ'.2)
   end.
 
 Arguments ctx_dist : clear implicits.
@@ -518,7 +511,7 @@ Lemma ctx_dist_add Γ σ τ γ γ' : size σ = size Γ -> size τ = size Γ ->
 Proof.
 elim: Γ σ τ γ γ' => [|A Γ ih] [|r σ] [|s τ] γ γ' //= => [_ _|[sG] [tG]].
   by rw adde0.
-by rw ih // sens_addE ge0_muleDl // addrACA.
+by rw ih // ?esens_add sens_addE ge0_muleDl // addrACA.
 Qed.
 
 Lemma ctx_dist_scale Γ r σ γ γ' : size σ = size Γ ->
@@ -526,7 +519,7 @@ Lemma ctx_dist_scale Γ r σ γ γ' : size σ = size Γ ->
 Proof.
 elim: Γ σ γ γ' => [|A Γ ih] [|s σ] γ γ' //= => [_|[sG]].
   by rw mule0.
-by rw ih // sens_mulE ge0_muleDr ?ctx_dist_ge0 ?mule_ge0 // muleA.
+by rw ih // ?esens_scale sens_mulE ge0_muleDr ?ctx_dist_ge0 ?mule_ge0 // muleA.
 Qed.
 
 (* The projection on a variable. *)
@@ -542,7 +535,7 @@ Fixpoint ctx_var (Γ : seq (ty R)) (i : nat) :
 Arguments ctx_var : clear implicits.
 
 Lemma ctx_var_dist Γ σ i γ γ' : size σ = size Γ -> (i < size Γ)%N ->
-  (nth sens0 σ i)%:num * edist (ctx_var Γ i γ, ctx_var Γ i γ') <=
+  (esens (nth centry0 σ i))%:num * edist (ctx_var Γ i γ, ctx_var Γ i γ') <=
   ctx_dist Γ σ γ γ'.
 Proof.
 elim: Γ σ i γ γ' => [|A Γ ih] [|r σ] [|i] γ γ' //= [sG] iG.
@@ -568,7 +561,7 @@ Proof. by move=> x0; rw addeC ge0_addey. Qed.
 
 (* (VAR): the projection, non-expansive since r >= 1. *)
 Lemma sem_var_ne Γ σ i : size σ = size Γ -> (i < size Γ)%N ->
-  1 <= (nth sens0 σ i)%:num ->
+  1 <= (esens (nth centry0 σ i))%:num ->
   @nonexpansive R (ctxC Γ σ) (sem_ty (nth unit Γ i)) (ctx_var Γ i).
 Proof.
 move=> sG iG r1; apply/nonexpansiveP => γ γ'; rw ctx_edistE.
@@ -577,12 +570,12 @@ by rw -[X in X <= _]mul1e; apply: lee_wpmul2r; [exact: edist_ge0 | exact: r1].
 Qed.
 
 Definition sem_var Γ σ i A (iG : (i < size Γ)%N) (e : nth unit Γ i = A)
-    (r1 : 1 <= (nth sens0 σ i)%:num) (sG : size σ = size Γ) :
+    (r1 : 1 <= (esens (nth centry0 σ i))%:num) (sG : size σ = size Γ) :
     ctxC Γ σ -o sem_ty A :=
   eq_rect _ (fun B => ctxC Γ σ -o sem_ty B) (NEMap (sem_var_ne sG iG r1)) _ e.
 
 (* (ABS): currying. *)
-Lemma sem_abs_subproof Γ σ A B r (f : ctxC (A :: Γ) (r :: σ) -o sem_ty B)
+Lemma sem_abs_subproof Γ σ A B r o (f : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty B)
     (γ : ctxC Γ σ) :
   @nonexpansive R (scale r (sem_ty A)) (sem_ty B) (fun a => f (γ, a)).
 Proof.
@@ -590,10 +583,10 @@ apply/nonexpansiveP => a a'; apply: le_trans (nemapP f (γ, a) (γ, a')) _.
 by rw ctx_edistE /= ctx_dist_xx add0e scale_edistE.
 Qed.
 
-Definition sem_abs Γ σ A B r (f : ctxC (A :: Γ) (r :: σ) -o sem_ty B)
+Definition sem_abs Γ σ A B r o (f : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty B)
   (γ : ctxC Γ σ) : sem_ty (A ⊸[r] B) := NEMap (sem_abs_subproof f γ).
 
-Lemma sem_abs_ne Γ σ A B r (f : ctxC (A :: Γ) (r :: σ) -o sem_ty B) :
+Lemma sem_abs_ne Γ σ A B r o (f : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty B) :
   @nonexpansive R (ctxC Γ σ) (sem_ty (A ⊸[r] B)) (sem_abs f).
 Proof.
 apply/nonexpansiveP => γ γ'; apply: nemap_edist_le => [|a /=].
@@ -656,16 +649,16 @@ apply/nonexpansiveP => γ γ'.
 by rw (@inr_isometry R (sem_ty A1) (sem_ty A2) (t γ) (t γ')); exact: nemapP t γ γ'.
 Qed.
 
-Definition sem_case Γ σ τ A B C r (t : ctxC Γ τ -o sem_ty (A + B))
-    (u : ctxC (A :: Γ) (r :: σ) -o sem_ty C)
-    (v : ctxC (B :: Γ) (r :: σ) -o sem_ty C)
+Definition sem_case Γ σ τ A B C r o o' (t : ctxC Γ τ -o sem_ty (A + B))
+    (u : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty C)
+    (v : ctxC (B :: Γ) (CEntry r o' :: σ) -o sem_ty C)
     (γ : ctxC Γ (σ ⧺ r *: τ)) : sem_ty C :=
   match t γ with inl a => u (γ, a) | inr b => v (γ, b) end.
 
 (* The two summands are at distance +oo, hence r > 0. *)
-Lemma sem_case_ne Γ σ τ A B C r (t : ctxC Γ τ -o sem_ty (A + B))
-    (u : ctxC (A :: Γ) (r :: σ) -o sem_ty C)
-    (v : ctxC (B :: Γ) (r :: σ) -o sem_ty C) :
+Lemma sem_case_ne Γ σ τ A B C r o o' (t : ctxC Γ τ -o sem_ty (A + B))
+    (u : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty C)
+    (v : ctxC (B :: Γ) (CEntry r o' :: σ) -o sem_ty C) :
   size σ = size Γ -> size τ = size Γ -> 0 < r%:num ->
   @nonexpansive R (ctxC Γ (σ ⧺ r *: τ)) (sem_ty C) (sem_case t u v).
 Proof.
@@ -703,13 +696,13 @@ apply: leeD; apply: lee_wpmul2l => //; rw -ctx_edistE.
 exact: nemapP u γ γ'.
 Qed.
 
-Definition sem_lettensor Γ σ τ A B C r s
-    (t : ctxC (B :: A :: Γ) (s :: r :: σ) -o sem_ty C)
+Definition sem_lettensor Γ σ τ A B C r s o o'
+    (t : ctxC (B :: A :: Γ) (CEntry s o' :: CEntry r o :: σ) -o sem_ty C)
     (u : ctxC Γ τ -o sem_ty (A ⊗[r, s] B)) (γ : ctxC Γ (σ ⧺ τ)) : sem_ty C :=
   t ((γ, (u γ).1), (u γ).2).
 
-Lemma sem_lettensor_ne Γ σ τ A B C r s
-    (t : ctxC (B :: A :: Γ) (s :: r :: σ) -o sem_ty C)
+Lemma sem_lettensor_ne Γ σ τ A B C r s o o'
+    (t : ctxC (B :: A :: Γ) (CEntry s o' :: CEntry r o :: σ) -o sem_ty C)
     (u : ctxC Γ τ -o sem_ty (A ⊗[r, s] B)) :
   size σ = size Γ -> size τ = size Γ ->
   @nonexpansive R (ctxC Γ (σ ⧺ τ)) (sem_ty C) (sem_lettensor t u).
@@ -814,15 +807,17 @@ Fixpoint walg (E : ty R) : wsp W (sem_ty E) -o sem_ty E :=
   | ty_lolli r A B =>
     NEMap (@walg_lolli_ne (scale r (sem_ty A)) (sem_ty B) (walg B))
   | ty_dist A => NEMap (@wjoin_ne (sem_ty A))
+  | ty_prop =>
+    NEMap (@nonexpansive_cst R (wsp W (sem_ty ty_prop)) (sem_ty ty_prop) point)
   end.
 
 (* let x = u in t: the algebra applied to the pushforward of the measure
    ⟦u⟧ γ along the curried ⟦t⟧ γ; the latter is r-Lipschitz, whence rΓ'. *)
-Definition sem_let Γ σ τ A E r (t : ctxC (A :: Γ) (r :: σ) -o sem_ty E)
+Definition sem_let Γ σ τ A E r o (t : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty E)
     (u : ctxC Γ τ -o sem_ty (𝕎 A)) (γ : ctxC Γ (σ ⧺ r *: τ)) : sem_ty E :=
   walg E (wmap W (sem_abs t γ) (u γ)).
 
-Lemma sem_let_ne Γ σ τ A E r (t : ctxC (A :: Γ) (r :: σ) -o sem_ty E)
+Lemma sem_let_ne Γ σ τ A E r o (t : ctxC (A :: Γ) (CEntry r o :: σ) -o sem_ty E)
     (u : ctxC Γ τ -o sem_ty (𝕎 A)) :
   size σ = size Γ -> size τ = size Γ ->
   @nonexpansive R (ctxC Γ (σ ⧺ r *: τ)) (sem_ty E) (sem_let t u).
@@ -850,16 +845,16 @@ apply/nonexpansiveP => γ γ'; apply: le_trans _ (nemapP t γ γ').
 by rw !discrete_edistE eqSS.
 Qed.
 
-Definition sem_natrec Γ σ τ ρ A (z : ctxC Γ σ -o sem_ty A)
-    (st : ctxC (ℕ :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
+Definition sem_natrec Γ σ τ ρ A o o' (z : ctxC Γ σ -o sem_ty A)
+    (st : ctxC (ℕ :: A :: Γ) (CEntry sens1 o' :: CEntry sens1 o :: τ) -o sem_ty A)
     (n : ctxC Γ ρ -o sem_ty ℕ) (γ : ctxC Γ (σ ⧺ sensy *: τ ⧺ ρ)) :
     sem_ty A :=
   natrec_fun (z γ) (fun a k => st ((γ, a), k)) (n γ).
 
 (* The step uses its context with sensitivity +oo and the argument with the
    discrete distance: both are either equal or at distance +oo. *)
-Lemma sem_natrec_ne Γ σ τ ρ A (z : ctxC Γ σ -o sem_ty A)
-    (st : ctxC (ℕ :: A :: Γ) (sens1 :: sens1 :: τ) -o sem_ty A)
+Lemma sem_natrec_ne Γ σ τ ρ A o o' (z : ctxC Γ σ -o sem_ty A)
+    (st : ctxC (ℕ :: A :: Γ) (CEntry sens1 o' :: CEntry sens1 o :: τ) -o sem_ty A)
     (n : ctxC Γ ρ -o sem_ty ℕ) :
   size σ = size Γ -> size τ = size Γ -> size ρ = size Γ ->
   @nonexpansive R (ctxC Γ (σ ⧺ sensy *: τ ⧺ ρ)) (sem_ty A) (sem_natrec z st n).
@@ -888,8 +883,8 @@ exact: ctx_dist_ge0.
 Qed.
 
 (* (FIX): the guarded fixed point semfix, from the seed point. *)
-Lemma sem_fix_contr Γ σ A (r : contr R)
-    (t : ctxC (A :: Γ) (contr_sens r :: contr_sensC r *: σ) -o sem_ty A)
+Lemma sem_fix_contr Γ σ A (r : contr R) o
+    (t : ctxC (A :: Γ) (CEntry (contr_sens r) o :: contr_sensC r *: σ) -o sem_ty A)
     (γ : ctxC Γ (contr_sensC r *: σ)) :
   econtraction r (fun a : sem_ty A => t (γ, a)).
 Proof.
@@ -897,13 +892,13 @@ move=> a a' /=; apply: le_trans (nemapP t (γ, a) (γ, a')) _.
 by rw ctx_edistE /= ctx_dist_xx add0e.
 Qed.
 
-Definition sem_fix Γ σ A (r : contr R)
-    (t : ctxC (A :: Γ) (contr_sens r :: contr_sensC r *: σ) -o sem_ty A)
+Definition sem_fix Γ σ A (r : contr R) o
+    (t : ctxC (A :: Γ) (CEntry (contr_sens r) o :: contr_sensC r *: σ) -o sem_ty A)
     (γ : ctxC Γ σ) : sem_ty A :=
   semfix (X := ctxC Γ (contr_sensC r *: σ)) (fun γ a => t (γ, a)) point γ.
 
-Lemma sem_fix_ne Γ σ A (r : contr R)
-    (t : ctxC (A :: Γ) (contr_sens r :: contr_sensC r *: σ) -o sem_ty A) :
+Lemma sem_fix_ne Γ σ A (r : contr R) o
+    (t : ctxC (A :: Γ) (CEntry (contr_sens r) o :: contr_sensC r *: σ) -o sem_ty A) :
   size σ = size Γ -> @nonexpansive R (ctxC Γ σ) (sem_ty A) (sem_fix t).
 Proof.
 move=> sG; apply/nonexpansiveP => γ γ'; rw /sem_fix.
@@ -922,7 +917,7 @@ Qed.
 Fixpoint sem Γ σ t A (d : Γ ⊢[ σ ] t : A) : ctxC Γ σ -o sem_ty A :=
   match d in typed Γ σ t A return ctxC Γ σ -o sem_ty A with
   | typed_var Γ σ i A iG e r1 sG => sem_var iG e r1 sG
-  | typed_abs Γ σ t A B r d => NEMap (sem_abs_ne (sem d))
+  | typed_abs Γ σ t A B r o d => NEMap (sem_abs_ne (sem d))
   | typed_app Γ σ τ t u A B r d1 d2 =>
     NEMap (sem_app_ne (sem d1) (sem d2) (typed_size d1) (typed_size d2))
   | typed_unit Γ σ _ =>
@@ -932,28 +927,28 @@ Fixpoint sem Γ σ t A (d : Γ ⊢[ σ ] t : A) : ctxC Γ σ -o sem_ty A :=
   | typed_proj2 Γ σ t A1 A2 d => NEMap (sem_proj2_ne (sem d))
   | typed_inj1 Γ σ t A1 A2 d => NEMap (@sem_inj1_ne Γ σ A1 A2 (sem d))
   | typed_inj2 Γ σ t A1 A2 d => NEMap (@sem_inj2_ne Γ σ A1 A2 (sem d))
-  | typed_case Γ σ τ t u v A B C r d1 d2 d3 r0 =>
+  | typed_case Γ σ τ t u v A B C r o o' d1 d2 d3 r0 =>
     NEMap (sem_case_ne (sem d1) (sem d2) (sem d3) (typed_size_cons d2)
       (typed_size d1) r0)
   | typed_tensor Γ σ τ ρ t u A B r s d1 d2 rG =>
     NEMap (@sem_tensor_ne Γ σ τ ρ A B r s (sem d1) (sem d2) (typed_size d1)
       (typed_size d2) rG)
-  | typed_lettensor Γ σ τ t u A B C r s d1 d2 =>
+  | typed_lettensor Γ σ τ t u A B C r s o o' d1 d2 =>
     NEMap (sem_lettensor_ne (sem d1) (sem d2) (typed_size_cons2 d1)
       (typed_size d2))
   | typed_dirac Γ σ t A d => NEMap (sem_dirac_ne (sem d))
   | typed_choice Γ σ τ t u A p d1 d2 =>
     NEMap (@sem_choice_ne Γ σ τ A p (sem d1) (sem d2) (typed_size d1)
       (typed_size d2))
-  | typed_let Γ σ τ t u A E r d1 d2 _ _ =>
+  | typed_let Γ σ τ t u A E r o d1 d2 _ _ =>
     NEMap (sem_let_ne (sem d1) (sem d2) (typed_size_cons d1) (typed_size d2))
   | typed_zero Γ σ _ =>
     NEMap (@nonexpansive_cst R (ctxC Γ σ) (sem_ty ℕ) O)
   | typed_succ Γ σ t d => NEMap (sem_succ_ne (sem d))
-  | typed_natrec Γ σ τ ρ z st n A d1 d2 d3 =>
+  | typed_natrec Γ σ τ ρ z st n A o o' d1 d2 d3 =>
     NEMap (sem_natrec_ne (sem d1) (sem d2) (sem d3) (typed_size d1)
       (typed_size_cons2 d2) (typed_size d3))
-  | typed_fix Γ σ t A r d =>
+  | typed_fix Γ σ t A r o d =>
     NEMap (sem_fix_ne (sem d) (etrans (esym (size_senv_scale _ _)) (typed_size_cons d)))
   end.
 
@@ -962,7 +957,7 @@ Theorem sem_nonexpansive Γ σ t A (d : Γ ⊢[ σ ] t : A) : nonexpansive (sem 
 Proof. exact: nemap_ne. Qed.
 
 (* The semantic equations of the paper. *)
-Lemma sem_absE Γ σ t A B r (d : A :: Γ ⊢[ r :: σ ] t : B) γ a :
+Lemma sem_absE Γ σ t A B r o (d : A :: Γ ⊢[ CEntry r o :: σ ] t : B) γ a :
   sem (typed_abs d) γ a = sem d (γ, a).
 Proof. by []. Qed.
 
@@ -971,15 +966,15 @@ Lemma sem_appE Γ σ τ t u A B r (d1 : Γ ⊢[ σ ] t : A ⊸[r] B)
   sem (typed_app d1 d2) γ = sem d1 γ (sem d2 γ).
 Proof. by []. Qed.
 
-Lemma sem_letE Γ σ τ t u A E r (d1 : A :: Γ ⊢[ r :: σ ] t : E)
+Lemma sem_letE Γ σ τ t u A E r o (d1 : A :: Γ ⊢[ CEntry r o :: σ ] t : E)
     (d2 : Γ ⊢[ τ ] u : 𝕎 A) (ibE : ib_ty E) (rfin : r%:num < +oo) γ :
   sem (typed_let d1 d2 ibE rfin) γ = walg E (wmap W (sem_abs (sem d1) γ) (sem d2 γ)).
 Proof. by []. Qed.
 
 (* fix x. t is a fixed point of t, at every environment whose seed is at
    finite displacement (always, in a single galaxy). *)
-Lemma sem_fixP Γ σ t A (r : contr R)
-    (d : A :: Γ ⊢[ contr_sens r :: contr_sensC r *: σ ] t : A) (γ : ctxC Γ σ) :
+Lemma sem_fixP Γ σ t A (r : contr R) o
+    (d : A :: Γ ⊢[ CEntry (contr_sens r) o :: contr_sensC r *: σ ] t : A) (γ : ctxC Γ σ) :
   edist (point, sem d (γ, point)) < +oo ->
   edist (sem (typed_fix d) γ, sem d (γ, sem (typed_fix d) γ)) = 0.
 Proof.
