@@ -173,7 +173,7 @@ The equality clause is a morphism of *CExtMet*: it factors as the $1$-Lipschitz 
   - *symmetry:* $⟦ t =_A u ⟧ = e^(-d_(⟦A⟧) (⟦t⟧, ⟦u⟧)) = e^(-d_(⟦A⟧) (⟦u⟧, ⟦t⟧)) = ⟦ u =_A t ⟧$, since $d_(⟦A⟧)$ is symmetric — the two predicates are equal;
   - *transitivity:* $(t =_A u) times.o (u =_A v) ⊢ (t =_A v)$, i.e. $e^(-d_(⟦A⟧) (⟦t⟧, ⟦v⟧)) >= e^(-d_(⟦A⟧) (⟦t⟧, ⟦u⟧)) dot e^(-d_(⟦A⟧) (⟦u⟧, ⟦v⟧))$, which after $-log$ is exactly the triangle inequality $d_(⟦A⟧) (⟦t⟧, ⟦v⟧) <= d_(⟦A⟧) (⟦t⟧, ⟦u⟧) + d_(⟦A⟧) (⟦u⟧, ⟦v⟧)$.
   All three hold at every grade because the averaged integrand is pointwise $>= 1$, and any $s$-mean of values $>= 1$ is again $>= 1$.
-]
+] <lem:eq-equiv>
 
 The quantifier clauses are morphisms by the same pattern: after $"split"$, the pair $r⟦m⟧ times.o "curry"(⟦φ⟧)$ feeds the operator $exists^s_(⟦A⟧)$ (resp. $forall^s_(⟦A⟧)$), which is non-expansive in the predicate slot (sup-log, every $s$) and in the measure slot (Kantorovich, $p >= 1$).
 
@@ -188,7 +188,7 @@ The quantifier clauses are morphisms by the same pattern: after $"split"$, the p
 
 so that $⟦ exists^s (x tilde m). φ ⟧ = integral^s_(x tilde ⟦m⟧) ∘ "curry"(⟦φ⟧) = exists^s_(⟦A⟧) ∘ (r⟦m⟧ times.o "curry"(⟦φ⟧)) ∘ "split"$, and dually with $forall^s$.
 
-== The graded entailment judgement
+== The graded entailment judgement <sec:entailment>
 
 The logical judgement has the shape
 

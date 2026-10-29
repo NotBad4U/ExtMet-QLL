@@ -11,21 +11,17 @@
 #import "@preview/curryst:0.6.0": prooftree, rule
 
 // Notation shared with the paper: ⟨⟩, x :ʳ A, Prop, ⊢_p, ⊕ˢ, ∀ˢ, ∃ˢ, rule layout.
-#import "../paper/common.typ": emptyctx, tcol, tcols, prop, ent, psum, fa, ex, rule-set
+#import "../paper/common.typ": emptyctx, ent, ex, fa, prop, psum, rule-set, tcol, tcols
 // The typing rules are renamed on import: `abs`, `case`, `fix`, ... would
 // otherwise shadow the math functions of the same name.
 #import "../paper/calculus.typ": (
-  types-syntax, sem-types,
-  var as r-var, abs as r-abs, app as r-app, pair as r-pair, proj as r-proj,
-  inj as r-inj, case as r-case, tensor as r-tensor, letin as r-letin,
-  dirac as r-dirac, probchoice as r-probchoice, letalg as r-letalg,
-  zero as r-zero, succ as r-succ, rec as r-rec, fix as r-fix, term-syntax
+  abs as r-abs, app as r-app, case as r-case, dirac as r-dirac, fix as r-fix, inj as r-inj, letalg as r-letalg,
+  letin as r-letin, pair as r-pair, probchoice as r-probchoice, proj as r-proj, rec as r-rec, sem-types, succ as r-succ,
+  tensor as r-tensor, term-syntax, types-syntax, var as r-var, zero as r-zero,
 )
 #import "../paper/logic.typ": (
-  prop-eq, prop-tens, prop-imp, prop-scale, prop-dual, prop-sum, prop-hsum,
-  prop-all, prop-ex,
-  l-ass, l-cut, l-relax, l-weak, l-tensR, l-tensL, l-impR, l-impL, l-eqI,
-  l-allI, l-exE,
+  l-allI, l-ass, l-cut, l-eqI, l-exE, l-impL, l-impR, l-relax, l-tensL, l-tensR, l-weak, prop-all, prop-dual, prop-eq,
+  prop-ex, prop-hsum, prop-imp, prop-scale, prop-sum, prop-tens,
 )
 
 #let colors = (
@@ -222,14 +218,18 @@
 
 // `u := v` above `a op b`, the symbols aligned in three columns.
 #let unit-op(u, v, op) = grid(
-  columns: 3, column-gutter: 0.5em, row-gutter: 0.6em, align: center,
+  columns: 3,
+  column-gutter: 0.5em,
+  row-gutter: 0.6em,
+  align: center,
   u, $:=$, v,
   $a$, op, $b$,
 )
 
 // A multiplicative cell: the unit and the operation, and the convention at 0 · ∞.
 #let mult-cell(op, conv) = grid(
-  columns: (auto, 1fr), align: horizon + center,
+  columns: (auto, 1fr),
+  align: horizon + center,
   unit-op($bold(1)$, $1$, op), conv,
 )
 
@@ -251,8 +251,15 @@
     [], [],
     grid.cell(colspan: 2, align(center, diagram(
       axes: (ltr, btt),
-      edge((60pt, 0pt), (-80pt, 0pt), "->", bend: -28deg, stroke: 1.2pt,
-        label: text(size: 0.6em, weight: "bold")[distributes over], label-side: right),
+      edge(
+        (60pt, 0pt),
+        (-80pt, 0pt),
+        "->",
+        bend: -28deg,
+        stroke: 1.2pt,
+        label: text(size: 0.6em, weight: "bold")[distributes over],
+        label-side: right,
+      ),
     ))),
   )
   #v(-0.6em)
@@ -265,7 +272,8 @@
     // the duality, with the de Morgan arrow on the right border, between the rows
     table.cell(rowspan: 2, align: left + horizon, box(width: 100%, {
       place(right + horizon, dx: 1.3em, stack(
-        dir: ltr, spacing: 0.15em,
+        dir: ltr,
+        spacing: 0.15em,
         rotate(-90deg, reflow: true, text(size: 0.6em, weight: "medium")[de Morgan]),
         diagram(axes: (ltr, btt), edge((0pt, 30pt), (0pt, -30pt), "<->", bend: -110deg, stroke: 1.2pt)),
       ))
@@ -301,19 +309,18 @@
 == Syntax and softness
 
 #set text(size: 19pt)
-  $
-    φ, ψ ::= & t | top | bot | t =_A u | φ times.o ψ | φ times.o^* ψ | φ arrow.double ψ | r φ | φ^* \
-           | & φ or^s ψ | φ and^s ψ | fa(s) (x tilde m). φ | ex(s) (x tilde m). φ 
-  $
-  $
-    Δ | Ψ & ent(p) φ
-  $
+$
+  φ, ψ ::= & t | top | bot | t attach(=, br: A) u | φ times.o ψ | φ times.o^* ψ | φ arrow.double ψ | r φ | φ^* \
+         | & φ or^s ψ | φ and^s ψ | fa(s) (x tilde m). φ | ex(s) (x tilde m). φ
+$
+$
+  Δ | Ψ & ent(p) φ
+$
 - Every variable carries a *sensitivity* and a *softness*, $x tcols(r, s) A$; a quantifier records the softness of the variable it binds
 - The *softness* $s$ grades the soft connectives, interpreted by the $s$-sums:
   $
-    ⟦ φ or^s ψ ⟧ &= ⟦ φ ⟧ plus.o^s ⟦ ψ ⟧ & quad ⟦ φ and^s ψ ⟧ &= ⟦ φ ⟧ plus.o^(-s) ⟦ ψ ⟧ \
-                &= (⟦ φ ⟧^s plus.o ⟦ ψ ⟧^s)^(1/s)     &  quad  &= (⟦ φ ⟧^* plus.o^s ⟦ ψ )^*⟧^* 
-  
+    ⟦ φ or^s ψ ⟧ & = ⟦ φ ⟧ plus.o^s ⟦ ψ ⟧           & quad ⟦ φ and^s ψ ⟧ & = ⟦ φ ⟧ plus.o^(-s) ⟦ ψ ⟧ \
+                 & = (⟦ φ ⟧^s plus.o ⟦ ψ ⟧^s)^(1/s) &               quad & = (⟦ φ ⟧^* plus.o^s ⟦ ψ )^*⟧^*
   $
 
 #remark[
@@ -324,10 +331,10 @@
 
 #set text(size: 19pt)
 Over $exists^s$ is the $s$-mean and $forall^s$ the harmonic $s$-mean:
-  $
-    ex(s) (x tilde m). φ = (integral φ(x)^s dif m(x))^(1 \/ s) quad quad quad
-    fa(s) (x tilde m). φ = (integral φ(x)^(-s) dif m(x))^(-1 \/ s)
-  $
+$
+  ex(s) (x tilde m). φ = (integral φ(x)^s dif m(x))^(1 \/ s) quad quad quad
+  fa(s) (x tilde m). φ = (integral φ(x)^(-s) dif m(x))^(-1 \/ s)
+$
 Facts:
 - Quantifiers are dual $(fa(s) (x tilde m). φ)^* = ex(s) (x tilde m). φ)$
 - $s = 1$ gives the expectation $EE_(x tilde m) [φ]$
@@ -360,22 +367,22 @@ $
 - A Markov process comprises states $S$, labels $L$ and
   $ o : S -> L quad quad quad t : S -> cal(D) S $
 - Bisimilarity distance: the least solution of
-  $ d(s, s') = cases(cal(K)_d (t(s), t(s')) & " if " I(s) eq I(s'),infinity & "otherwise") $
+  $ d(s, s') = cases(cal(K)_d (t(s), t(s')) & " if " I(s) eq I(s'), infinity & "otherwise") $
 
 - If $m$ and $n$ have the same label then
-  $ d(m, n) <= 1 / 4  " read as " m attach(=, br:1/4) n $
+  $ d(m, n) <= 1 / 4 " read as " m attach(=, br: 1/4) n $
 
 == Quantitative Logic
 
-- *Quantitative logic can be constructed in Extended Metric Spaces (EMet)*  
-  
-  with $(X, d_x : X times X -> [0, oo])$ 
+- *Quantitative logic can be constructed in Extended Metric Spaces (EMet)*
+
+  with $(X, d_x : X times X -> [0, oo])$
   $
-    d_X (x, y) &= 0 "iff" x = y \
-    d_X  (x, y) &= d_X (y, x) \
-    d_X (x, z) &<= d_X (x, y) + d_X (y, z)
+    d_X (x, y) & = 0 "iff" x = y \
+    d_X (x, y) & = d_X (y, x) \
+    d_X (x, z) & <= d_X (x, y) + d_X (y, z)
   $
-  
+
   - transitivity is
     $ x =_epsilon y, space y =_(epsilon') z tack.r x =_(epsilon'') z quad quad "for" epsilon'' >= epsilon + epsilon' $
 
@@ -387,13 +394,14 @@ $
 
 == Quantitative Linear Logic (FQLL) in EMet
 
-- Truth values in $Omega :=  overline(RR)_+ = [0, oo]$
+- Truth values in $Omega := overline(RR)_+ = [0, oo]$
 - $Omega$ is `Prop`
-- Interpretation of $x = y$ is
+- Interpretation of $x attach(=, br: A) y$ is
   $
-    d_Omega : Omega arrow Omega arrow overline(RR)_+ \
-    d(x,y)_Omega  = e^(-d(x, y))
+    (attach(=, br: A)) : A times.o A arrow Omega, quad (x, y) |-> e^(-d_A (x, y))
   $
+- $Omega$ itself carries the log metric $d_Omega (a, b) = |log a - log b|$,
+  so $e^(-(-))$ is an isometry $([0, oo], |a - b|) -> Omega$ and $attach(=, br: A)$ is non-expansive
 - So $infinity$ is $top$, $0$ is $bot$
 - $phi tack.r psi$ means $phi <= psi$
 
@@ -408,7 +416,7 @@ $
   $ x = y, space y = z tack.r x = z $
 - Suggests comma as product ($times.o$):
   $
-  e^(-d(x, y)) dot e^(-d(y, z)) <= e^(-d(x, z))
+    e^(-d(x, y)) dot e^(-d(y, z)) <= e^(-d(x, z))
   $
 #pause
 - *Sensitivity* of terms needs to be tracked:
@@ -459,7 +467,7 @@ $
   $ d_(X times.o Y) ((x, y), (x', y')) = d_X (x, x') + d_Y (y, y') $
 - Monoidal closed
   $
-    X multimap Y & = { f : X -> Y | f "non-expansive" } \
+               X multimap Y & = { f : X -> Y | f "non-expansive" } \
     d_(X multimap Y) (f, g) & = sup { d_Y (f(x), g(x)) | x in X }
   $
 
@@ -470,9 +478,13 @@ $
 == Example of #ext
 
 The simplest example: the *$oo$-discrete metric* on any set $X$
-#align(center, box(stroke: 0.6pt, inset: 8pt, $
-  d(x, y) = cases(0 & "if" x = y, oo & "if" x != y)
-$))
+#align(center, box(
+  stroke: 0.6pt,
+  inset: 8pt,
+  $
+    d(x, y) = cases(0 & "if" x = y, oo & "if" x != y)
+  $,
+))
 For example, take $X = {a, b, c}$. Its distance matrix is:
 #align(center, table(
   columns: 4,
@@ -530,10 +542,12 @@ $
   obj-cell($RR$, $|a - b|$),
   obj-cell($NN$, $display(cases(0 & "if" a = b, oo & "otherwise"))$),
   obj-cell($bold(1)$, $0$),
+
   obj-cell($r dot X$, $r dot d_X (a, b)$),
   obj-cell($X \& Y$, $max(d_X (a_1, b_1), d_Y (a_2, b_2))$),
   obj-cell($X times.o Y$, $d_X (a_1, b_1) + d_Y (a_2, b_2)$),
-  obj-cell($X + Y$, $display(cases(d_X "or" d_Y , oo ))$),
+
+  obj-cell($X + Y$, $display(cases(d_X "or" d_Y, oo))$),
   obj-cell($X multimap Y$, $sup_(x in X) d_Y (a(x), b(x))$),
   obj-cell($cal(W) X$, "Wasserstein distance"),
 )
@@ -547,7 +561,9 @@ $
 #pause
 #proposition(title: [Scaling properies])[
   For all $r, s in [0, oo]$,
-  $ r (A times.o B) tilde.equiv r A times.o r B, quad (r s) A tilde.equiv r (s A), quad r bold(1) tilde.equiv bold(1), quad r (A + B) tilde.equiv r A + r B space (r > 0) $
+  $
+    r (A times.o B) tilde.equiv r A times.o r B, quad (r s) A tilde.equiv r (s A), quad r bold(1) tilde.equiv bold(1), quad r (A + B) tilde.equiv r A + r B space (r > 0)
+  $
 ]
 
 == Guarded recursion
@@ -577,7 +593,7 @@ $
   - $F : X times.o p Y -> Y$
   - non-expansive (coercion) map $f : X -> Y$
   - and $d(f(x), F(x, f(x))) < oo$
-  
+
   the map $"fp"(F) : X -> (1 - p) Y$ with
   $ "fp"(F)(x) = "fix"(F(x, -)) "from" f(x) $
   is non-expansive.
@@ -592,11 +608,11 @@ $
 Let $mu$ and $eta$ be Radon probability measure on $X$ of finite first moment.
 The Wasserstein distance is given by:
 $
-  cal(W) & : X arrow.r X arrow.r [0, oo]  \
-  cal(W)(mu,eta) & = inf_(gamma in C(mu,eta)) integral_(x,x' in X times X) d(x,x') space "d"gamma(x,x') \
-            & = inf_(gamma in C(mu,eta)) EE_(x,x' ~gamma) d(x,x')
+          cal(W) & : X arrow.r X arrow.r [0, oo] \
+  cal(W)(mu,eta) & = inf_(gamma in C(mu,eta)) integral_(x,x' in X times X) d(x,x') space "d"gamma(x, x') \
+                 & = inf_(gamma in C(mu,eta)) EE_(x,x' ~gamma) d(x,x')
 $
-We assign to $cal(W)X$ (probability monad) the Wasserstein metric. 
+We assign to $cal(W)X$ (probability monad) the Wasserstein metric.
 
 == Monad $cal(W)X$ Operators
 
@@ -622,8 +638,8 @@ A (complete) interpolative barycentric algebra in #cext:
 Choice operator: $amp.inv_p : forall X, p X times.o (1 - p) X -> X$
 
 $
-  x amp.inv_p x & = x & "(idem)" \
-  x amp.inv_p y & = y amp.inv_(1 - p) x & "(comm)" \
+                x amp.inv_p x & = x                                                          &  "(idem)" \
+                x amp.inv_p y & = y amp.inv_(1 - p) x                                        &  "(comm)" \
   (x amp.inv_p y) amp.inv_q z & = x amp.inv_(p q) (y amp.inv_((q - p q) / (1 - p q)) z) quad & "(assoc)"
 $
 
@@ -649,7 +665,7 @@ $
 - Types
 
 $
-  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A | text(weight: "bold", fill: #colors.emerald, prop)  
+  A, B ::= & NN | "unit" | A times B | A + B | A attach(times.o, bl: r, br: s) B | A multimap_r B | cal(W) A | text(weight: "bold", fill: #colors.emerald, prop)
 $
 
 - Terms
@@ -680,12 +696,12 @@ $
 - Sum of contexts
   $
     (Gamma, x tcols(r, s) A) ⧺ (Gamma', x tcols(r', s') A) & = (Gamma ⧺ Gamma'), x tcols(r + r', s plus.o^* s') A \
-    emptyctx ⧺ emptyctx & = emptyctx
+                                       emptyctx ⧺ emptyctx & = emptyctx
   $
 - Scaling of contexts
   $
     c (Gamma, x tcols(r, s) A) & = c Gamma, x tcols(c dot r, s) A \
-    c emptyctx & = emptyctx
+                    c emptyctx & = emptyctx
   $
 - Sensitivities add and scale; softnesses compose by harmonic sum $1 / (s plus.o^* s') = 1 / s + 1 / s'$ (unit $oo$) and ignore scaling
 - $⟦ Gamma ⧺ Gamma' ⟧ -> ⟦ Gamma ⟧ times.o ⟦ Gamma' ⟧$ and $⟦ c Gamma ⟧ -> c ⟦ Gamma ⟧$ are identities on the common carrier
@@ -712,13 +728,12 @@ $
 #set text(size: 19pt)
 #align(center, markov)
 
-- Assume a type of processes, an observation paired with a next-state distribution
-  $ PP tilde.equiv A attach(times.o, bl: 1, br: 1) cal(W) PP $
-- Define $m$ as
-  $ m ≜ "fix" m. (a, space delta m amp.inv_(1 \/ 3) delta z) $
-- Using
-  $ z tcols(2 / 3, s) PP, space m tcols(1 / 3, s) PP ⊢ (a, space delta m amp.inv_(1 \/ 3) delta z) : PP $
-  so that (FIX) with $r = 1 / 3$ gives $z tcols(1, s) PP ⊢ m : PP$: the process $m$ is non-expansive in $z$
+Assume a type of processes, an observation paired with a next-state distribution
+$ PP tilde.equiv A attach(times.o, bl: 1, br: 1) cal(W) PP $
+Define $m$ as
+$ m ≜ "fix" m. (a, space delta m amp.inv_(1 \/ 3) delta z) $
+Using
+$ z tcols(2 / 3, s) PP, space m tcols(1 / 3, s) PP ⊢ (a, space delta m amp.inv_(1 \/ 3) delta z) : PP $
 
 // =====================================================================
 = The internal quantitatice logic
@@ -728,34 +743,35 @@ $
 
 #set text(size: 18pt)
 - A commutative quantale with an involution
-  $ prop = ([0, oo], <=, times.o, 1, (-)^*)$
+  $prop = ([0, oo], <=, times.o, 1, (-)^*)$
 - Where
   $
     a times.o b = a b quad (0 times.o oo = 0) quad quad a^* = 1 / a quad (0^* = oo) quad quad
     a multimap b = a^* times.o^* b
   $
-- $bot = 0$, $top = oo$, and $a$ is *true* iff $a >= 1$
-
-#pause
-
-#remark[
-We can also define
-  $
-    prop_plus.o = ([0, oo], <=, times.o, 0, (-)^*)
-  $
-  with $d_prop_plus.o (a, b) = |log a - log b|$ and Napierian duality $prop_plus.o ⟷ prop$
-]
-
-== QLL sensitivity
-
-We need to track sensitivity for 
+- $bot = 0$
+- $top = oo$
+- and $tack a$ is *true* in semantics iff $a >= 1$
+- Metric $d_prop (a, b) = |log a - log b|$
+- Equality $⟦ attach(=, br: A) : A times.o A -> prop⟧$ $(x, y) := e^(-d_A (x, y))$
 
 == Typing rule for Prop operator
 
 #set text(size: 17pt)
 Since $prop$ is an object of #cext, predicates track sensitivity exactly like terms; a quantifier binds $x tcols(r, s) A$ and records its softness $s$.
 #v(0.3em)
-#align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, prop-eq, prop-tens, prop-imp, prop-scale, prop-dual, prop-sum, prop-all, prop-ex))
+#align(center, rule-set(
+  column-gutter: 2.2em,
+  row-gutter: 2em,
+  prop-eq,
+  prop-tens,
+  prop-imp,
+  prop-scale,
+  prop-dual,
+  prop-sum,
+  prop-all,
+  prop-ex,
+))
 
 == Soft quantifiers are means
 
@@ -766,13 +782,89 @@ Since $prop$ is an object of #cext, predicates track sensitivity exactly like te
     fa(s) (x tilde m). phi = (integral phi(x)^(-s) dif m(x))^(-1 \/ s)
   $
 - $s$ is the softness of the bound variable $x tcols(r, s) A$; its sensitivity $r$ is not recorded, it is absorbed by $r cal(W) A = cal(W)(r A)$
-- $s = oo$: $sup$ and $inf$ over the support of $m$, the hard quantifiers
-- $s = 1$: the expectation $EE_(x tilde m) [phi]$ and its harmonic mean
 
-== The graded entailment
-
-#align(center, box(stroke: .5pt, inset: 6pt)[$ Delta thin | thin Psi ent(p) phi $])
+#remark[
+  - $s = oo space (-oo)$ is $sup$ (or $inf$) over the support of $m$, the hard quantifiers
+  - $s = 1$ is the expectation $EE_(x tilde m) [phi]$
+]
 
 == Connectives and quantifiers
 
 #align(center, rule-set(column-gutter: 2.2em, row-gutter: 2em, l-tensR, l-tensL, l-impR, l-impL, l-eqI, l-allI, l-exE))
+
+// =====================================================================
+= Examples
+// =====================================================================
+
+// The rules and definitions of the example are those of paper/examples.typ.
+#import "../paper/examples.typ": bisim-statement, l-cong, l-grec, l-scale, l-unfold, proc-defs
+
+== Example: bisimilarity distance of two processes
+
+#set text(size: 19pt)
+#align(center, markov)
+
+Over $PP tilde.equiv A attach(times.o, bl: 1, br: 1) cal(W) PP$
+
+#proc-defs
+
+We want to prove:
+#bisim-statement
+
+
+== The rules used
+
+#set text(size: 15pt)
+#align(center, rule-set(column-gutter: 2.5em, row-gutter: 2.2em, l-scale, l-unfold, l-cong, l-grec))
+#v(0.4em)
+
+== The proof
+
+#set text(size: 17pt)
+By (G-REC) at $p = 1 / 3$, then the scaling identity $2 / 3 (1 / 4 φ) equiv 1 / 6 φ$, it suffices to derive
+$ 1 / 6 (z = n), space 1 / 3 (m = n) ent(oo) m = n $
+#pause
+By (UNFOLD) on both sides and transitivity, it suffices to derive
+$
+  1 / 6 (z = n), space 1 / 3 (m = n) ent(oo) (a, space delta m amp.inv_(1 \/ 3) (delta z amp.inv_(1 \/ 4) delta z)) = (a, space delta n amp.inv_(1 \/ 3) (delta n amp.inv_(1 \/ 4) delta z))
+$
+#pause
+One instance of (CONG) on the term, with $arrow(u) = (m, z, z)$ and $arrow(v) = (n, n, z)$,
+$
+  x tcols(1 \/ 3, o) PP, space y tcols(1 \/ 6, o) PP, space z tcols(1 \/ 2, o) PP ⊢ (a, space delta x amp.inv_(1 \/ 3) (delta y amp.inv_(1 \/ 4) delta z)) : PP
+$
+gives it, the hypothesis $1 / 2 (z = z)$ being the unit $1$ by (=I)
+
+#remark[
+  In log scale: $d(m, n) <= 1 / 3 d(m, n) + 1 / 6 d(z, n)$, hence $d(m, n) <= 1 / 4 d(z, n)$
+]
+
+== Example: MNIST
+
+#set text(size: 15pt)
+- $RR^n$ with its $ell_2$ metric is an object of #cext;
+- One input channel on a $28 times 28$ grid,
+- $c$ feature maps:
+- $"conv"_K : RR^784 attach(multimap, br: ||K||_"op") RR^(c dot 784)$
+
+$
+        & ⊢ "cnn" : RR^784 attach(multimap, br: r) RR^10 \
+  "cnn" & ≜ lambda x. space "aff"_(W_2, b_2) ("relu" ("aff"_(W_1, b_1) ("flat" ("avgpool" ("relu" ("conv"_K space x))))))
+$
+$
+  r = ||K||_"op" dot 1 dot 1 / 2 dot 1 dot ||W_1|| dot 1 dot ||W_2||
+$
+
+
+== The CNN Robustness Type
+
+
+$ "Rob"_r ("cnn", v) ≜ r (x attach(=, br: RR^784) v) multimap ("cnn" space x attach(=, br: RR^10) "cnn" space v) $
+
+denotes to
+$ e^(r dot d(x, v) - d("cnn" x, "cnn" v)) $
+true ($>= 1$) at $x$ if and only if
+
+$
+  d("cnn" space x, "cnn" space v) <= r dot d(x, v)
+$
